@@ -5,27 +5,25 @@ import (
 	"gorm.io/gorm"
 )
 
-// RoleSeeder seeds the default roles.
-type RoleSeeder struct{}
-
-func (s *RoleSeeder) Count() (int, error) {
-	return 0, nil
+type RoleSeeder struct {
+	db *gorm.DB
 }
 
-// Seed inserts default roles if they don't exist.
-func (s *RoleSeeder) Seed(db *gorm.DB) error {
-	defaults := []schema.Role{
-		{Name: "Super Admin", Code: "super_admin", Description: "Full system access"},
-		{Name: "Admin Account", Code: "admin_account", Description: "Full system access"},
-		{Name: "User", Code: "user", Description: "Regular user"},
+func NewRoleSeeder(db *gorm.DB) *RoleSeeder {
+	return &RoleSeeder{db: db}
+}
+
+func (s *RoleSeeder) Count() (int, error) {
+	if s.db == nil {
+		return 0, nil
 	}
 
-	for _, role := range defaults {
-		if err := db.Where(schema.Role{Code: role.Code}).
-			FirstOrCreate(&role).Error; err != nil {
-			return err
-		}
-	}
+	var count int64
+	err := s.db.Model(&schema.Role{}).Count(&count).Error
+	return int(count), err
+}
 
+// Seed does nothing - roles come from Logto, not from seeding.
+func (s *RoleSeeder) Seed(_ *gorm.DB) error {
 	return nil
 }

@@ -44,17 +44,22 @@ func NewLogtoRoleSyncService(
 	}
 }
 
-// SyncRolesFromClaims is the preferred approach.
+// SyncRolesFromClaims syncs roles from Logto JWT claims to local database.
 func (s *logtoRoleSyncService) SyncRolesFromClaims(userID uint64, roleCodes []string) error {
 	if len(roleCodes) == 0 {
 		return s.userRoleRepo.SyncUserRoles(userID, []schema.Role{})
 	}
 
 	for _, code := range roleCodes {
-		_, _ = s.roleRepo.CreateIfNotExists(&schema.Role{
-			Name: code,
-			Code: code,
+		_, err := s.roleRepo.CreateIfNotExists(&schema.Role{
+			Name:        code,
+			Code:        code,
+			Description: "Synced from Logto",
 		})
+
+		if err != nil {
+			fmt.Printf("warning: failed to create role %q: %v\n", code, err)
+		}
 	}
 
 	roles, err := s.roleRepo.FindByCodes(roleCodes)
@@ -82,7 +87,9 @@ func (s *logtoRoleSyncService) SyncRolesFromManagementAPI(userID uint64, logtoUs
 		return fmt.Errorf("role sync: http request: %w", err)
 	}
 
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)

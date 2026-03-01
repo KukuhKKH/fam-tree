@@ -122,7 +122,8 @@ func Start(
 
 				if hasFlag("seed") {
 					log.Info().Msg("🌱 Seed flag detected. Running seeder...")
-					db.SeedModels(&seeder.RoleSeeder{})
+					roleSeeder := seeder.NewRoleSeeder(db.DB)
+					db.SeedModels(roleSeeder)
 				}
 
 				// Return nil agar FX tahu aplikasi berhasil start

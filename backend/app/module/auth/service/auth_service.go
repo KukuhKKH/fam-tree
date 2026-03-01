@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -217,7 +218,7 @@ func (s *userService) HandleCallback(code, state, sessionState, sessionVerifier 
 
 	// Sync roles from id_token claims to local DB
 	if syncErr := s.roleSyncSvc.SyncRolesFromClaims(user.ID, claims.Roles); syncErr != nil {
-		_ = syncErr
+		_, _ = fmt.Fprintf(os.Stderr, "failed to sync roles for user %d: %v\n", user.ID, syncErr)
 	}
 
 	return user.ID, claims.Roles, nil

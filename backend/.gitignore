@@ -36,6 +36,9 @@ gorm.log
 *.db
 *.sqlite
 
+# Docs Internal
+docs/*.md
+
 # Environment variables
 .env
 .env.*
