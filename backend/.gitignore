@@ -1,0 +1,42 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go build cache & modules
+bin/
+build/
+vendor/
+*.log
+*.tmp
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+
+# Go modules & dependencies
+/go.sum
+/go.work.sum
+
+# Fiber specific (sessions, temp files)
+fiber.log
+fiber_sessions/
+
+# GORM (migration logs, temp db files)
+gorm.log
+*.db
+*.sqlite
+
+# Environment variables
+.env
+.env.*
+config/*.toml
