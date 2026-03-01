@@ -5,6 +5,7 @@ import (
 
 	"git.dev.siap.id/kukuhkkh/app-silsilah/app/middleware"
 	"git.dev.siap.id/kukuhkkh/app-silsilah/app/module/auth"
+	"git.dev.siap.id/kukuhkkh/app-silsilah/app/module/family"
 	"git.dev.siap.id/kukuhkkh/app-silsilah/app/router"
 	"git.dev.siap.id/kukuhkkh/app-silsilah/internal/bootstrap"
 	"git.dev.siap.id/kukuhkkh/app-silsilah/internal/bootstrap/database"
@@ -44,6 +45,7 @@ func main() {
 
 		// provide modules
 		auth.NewAuthModule,
+		family.NewFamilyModule,
 
 		// start application
 		fx.Invoke(bootstrap.Start),
