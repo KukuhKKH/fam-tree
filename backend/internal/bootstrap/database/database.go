@@ -90,6 +90,8 @@ func Models() []interface{} {
 		schema.UserRole{},
 		schema.Family{},
 		schema.FamilyMember{},
+		schema.Person{},
+		schema.Relationship{},
 	}
 }
 

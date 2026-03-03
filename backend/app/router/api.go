@@ -3,6 +3,7 @@ package router
 import (
 	"git.dev.siap.id/kukuhkkh/app-silsilah/app/module/auth"
 	"git.dev.siap.id/kukuhkkh/app-silsilah/app/module/family"
+	"git.dev.siap.id/kukuhkkh/app-silsilah/app/module/person"
 	"git.dev.siap.id/kukuhkkh/app-silsilah/internal/bootstrap/database"
 	"git.dev.siap.id/kukuhkkh/app-silsilah/utils/config"
 	"github.com/gofiber/fiber/v2"
@@ -14,6 +15,7 @@ type Router struct {
 	Db           *database.Database
 	AuthRouter   *auth.AuthRouter
 	FamilyRouter *family.FamilyRouter
+	PersonRouter *person.PersonRouter
 }
 
 func NewRouter(
@@ -22,6 +24,7 @@ func NewRouter(
 	db *database.Database,
 	authRouter *auth.AuthRouter,
 	familyRouter *family.FamilyRouter,
+	personRouter *person.PersonRouter,
 ) *Router {
 	return &Router{
 		App:          fiber,
@@ -29,6 +32,7 @@ func NewRouter(
 		Db:           db,
 		AuthRouter:   authRouter,
 		FamilyRouter: familyRouter,
+		PersonRouter: personRouter,
 	}
 }
 
@@ -68,4 +72,5 @@ func (r *Router) Register() {
 	// routes of modules
 	r.AuthRouter.RegisterAuthRoutes()
 	r.FamilyRouter.RegisterFamilyRoutes()
+	r.PersonRouter.RegisterPersonRoutes()
 }
