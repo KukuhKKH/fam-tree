@@ -2,6 +2,7 @@ import { env } from '$env/dynamic/public';
 
 interface FetchOptions extends RequestInit {
 	params?: Record<string, string>;
+	fetch?: typeof fetch;
 }
 
 export async function apiFetch<T = any>(path: string, options: FetchOptions = {}): Promise<T> {
@@ -14,20 +15,26 @@ export async function apiFetch<T = any>(path: string, options: FetchOptions = {}
 		url += `?${searchParams.toString()}`;
 	}
 
-	const response = await fetch(url, {
+	// Use provided fetch (e.g. from SvelteKit load) or global fetch
+	const fetchFn = options.fetch || fetch;
+
+	const response = await fetchFn(url, {
 		...options,
 		headers: {
 			'Content-Type': 'application/json',
 			...options.headers,
 		},
-		credentials: 'include', // Important for sending/receiving session cookies
+		credentials: 'include',
 	});
 
 	if (!response.ok) {
 		const errorData = await response.json().catch(() => ({}));
-		throw new Error(errorData.messages?.[0] || response.statusText);
+		// Try to find error message in various common fields
+		const msg = errorData.messages?.[0] || errorData.error || errorData.message || response.statusText;
+		throw new Error(msg);
 	}
 
 	const result = await response.json();
-	return result.data as T;
+	// Handle cases where the backend doesn't wrap in "data" or already returns it
+	return (result && typeof result === 'object' && 'data' in result) ? result.data : result;
 }
