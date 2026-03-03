@@ -87,7 +87,7 @@ func (_i *authController) Callback(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect(_i.cfg.App.FrontendUrl)
+	return c.Redirect(_i.cfg.App.FrontendUrl + "/dashboard")
 }
 
 func (_i *authController) Me(c *fiber.Ctx) error {
