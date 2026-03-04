@@ -88,11 +88,7 @@
           <Shield size={14} class="text-zinc-400" />
           Peran (Role)
         </Label>
-        <Select.Root
-          type="single"
-          value={role}
-          onValueChange={(v) => (role = v)}
-        >
+        <Select.Root type="single" bind:value={role}>
           <Select.Trigger
             class="rounded-xl border-zinc-200 dark:border-zinc-800 capitalize"
           >

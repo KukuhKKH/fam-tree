@@ -17,24 +17,50 @@
   let deleting = $state(false);
 
   let form = $state({
-    name: "",
-    description: "",
-    visibility: "private",
+    name: family?.name || "",
+    description: family?.description || "",
+    visibility: family?.visibility || "private",
   });
 
-  // Initialize/Sync form state when prop changes or modal opens
+  let selectedVisibility = $state(family?.visibility || "private");
+
   $effect(() => {
     if (open && family) {
       form.name = family.name || "";
       form.description = family.description || "";
-      form.visibility = family.visibility || "private";
+      selectedVisibility = family.visibility || "private";
     }
   });
 
+  $effect(() => {
+    form.visibility = selectedVisibility;
+  });
+
   const visibilityOptions = [
-    { value: "public", label: "Publik (Terlihat semua orang)", icon: Globe },
-    { value: "private", label: "Privat (Hanya anggota)", icon: Lock },
+    {
+      value: "public",
+      label: "Publik",
+      description: "Terlihat semua orang",
+      icon: Globe,
+    },
+    {
+      value: "link_only",
+      label: "Hanya via Link",
+      description: "Bagi mereka yang punya link",
+      icon: Globe,
+    },
+    {
+      value: "private",
+      label: "Privat",
+      description: "Hanya anggota keluarga",
+      icon: Lock,
+    },
   ];
+
+  const currentLabel = $derived(
+    visibilityOptions.find((o) => o.value === selectedVisibility)?.label ||
+      "Pilih Visibilitas",
+  );
 
   async function updateFamily() {
     if (!form.name) return toast.error("Nama keluarga wajib diisi");
@@ -128,25 +154,24 @@
 
       <div class="grid gap-2">
         <Label for="visibility" class="font-bold">Visibilitas</Label>
-        <Select.Root
-          type="single"
-          value={form.visibility}
-          onValueChange={(v) => (form.visibility = v)}
-        >
+        <Select.Root type="single" bind:value={selectedVisibility}>
           <Select.Trigger
-            class="rounded-xl border-zinc-200 dark:border-zinc-800 capitalize"
+            class="w-full rounded-xl border-zinc-200 dark:border-zinc-800 capitalize"
           >
-            <Select.Value placeholder="Pilih Visibilitas" />
+            {currentLabel}
           </Select.Trigger>
           <Select.Content class="backdrop-blur-xl">
             {#each visibilityOptions as opt}
-              <Select.Item
-                value={opt.value}
-                label={opt.label}
-                class="cursor-pointer gap-2"
-              >
-                <opt.icon size={14} class="inline mr-2" />
-                {opt.label}
+              <Select.Item value={opt.value} label={opt.label}>
+                <div class="flex items-center gap-2">
+                  <opt.icon size={14} />
+                  <div class="flex flex-col">
+                    <span class="font-medium text-sm">{opt.label}</span>
+                    <span class="text-[10px] text-zinc-500 leading-none"
+                      >{opt.description}</span
+                    >
+                  </div>
+                </div>
               </Select.Item>
             {/each}
           </Select.Content>

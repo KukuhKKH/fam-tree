@@ -18,6 +18,29 @@
   let description = $state("");
   let visibility = $state("private");
 
+  const visibilityOptions = [
+    {
+      value: "public",
+      label: "Publik",
+      hint: "Bisa dicari oleh siapa saja",
+    },
+    {
+      value: "link_only",
+      label: "Hanya via Link",
+      hint: "Hanya melalui link undangan",
+    },
+    {
+      value: "private",
+      label: "Privat",
+      hint: "Hanya anggota yang diundang",
+    },
+  ];
+
+  const currentLabel = $derived(
+    visibilityOptions.find((o) => o.value === visibility)?.label ||
+      "Pilih Visibilitas",
+  );
+
   async function handleSubmit(e: SubmitEvent) {
     e.preventDefault();
     loading = true;
@@ -96,21 +119,26 @@
         </div>
 
         <div class="grid gap-2">
-          <Label for="visibility">Visibilitas</Label>
+          <Label for="visibility" class="font-bold">Visibilitas</Label>
           <Select.Root type="single" bind:value={visibility}>
-            <Select.Trigger class="w-full">
-              <Select.Value placeholder="Pilih Visibilitas" />
+            <Select.Trigger
+              class="w-full rounded-xl border-zinc-200 dark:border-zinc-800"
+            >
+              {currentLabel}
             </Select.Trigger>
             <Select.Content class="backdrop-blur-xl">
-              <Select.Item value="public" label="Publik"
-                >Publik (Bisa dicari)</Select.Item
-              >
-              <Select.Item value="link_only" label="Hanya via Link"
-                >Hanya via Link</Select.Item
-              >
-              <Select.Item value="private" label="Privat"
-                >Privat (Hanya Anggota)</Select.Item
-              >
+              {#each visibilityOptions as opt}
+                <Select.Item value={opt.value} label={opt.label}>
+                  <div class="flex flex-col text-left">
+                    <span class="font-bold text-sm tracking-tight"
+                      >{opt.label}</span
+                    >
+                    <span class="text-[10px] text-zinc-500 leading-tight"
+                      >{opt.hint}</span
+                    >
+                  </div>
+                </Select.Item>
+              {/each}
             </Select.Content>
           </Select.Root>
         </div>
