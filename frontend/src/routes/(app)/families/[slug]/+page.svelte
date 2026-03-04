@@ -77,29 +77,29 @@
           </p>
         </div>
 
-        <div class="flex flex-wrap items-center gap-8 pt-2">
-          <div class="flex items-center gap-2.5">
+        <div class="flex flex-wrap items-center gap-y-6 gap-x-10 pt-4">
+          <div class="flex items-center gap-3">
             <div class="p-2 rounded-lg bg-primary/10 border border-primary/20">
               <Users size={18} class="text-primary font-bold" />
             </div>
-            <div class="flex flex-col -space-y-1">
+            <div class="flex flex-col">
               <span
-                class="text-lg font-bold text-zinc-900 dark:text-white leading-none"
+                class="text-lg font-bold text-zinc-900 dark:text-white leading-tight"
                 >{members.length}</span
               >
               <span
-                class="text-[10px] uppercase tracking-tighter text-zinc-500 font-bold"
+                class="text-[10px] uppercase tracking-wider text-zinc-500 font-bold"
                 >Anggota</span
               >
             </div>
           </div>
-          <div class="flex items-center gap-2.5">
+          <div class="flex items-center gap-3">
             <div class="p-2 rounded-lg bg-primary/10 border border-primary/20">
               <Calendar size={18} class="text-primary font-bold" />
             </div>
-            <div class="flex flex-col -space-y-1">
+            <div class="flex flex-col">
               <span
-                class="text-lg font-bold text-zinc-900 dark:text-white leading-none"
+                class="text-lg font-bold text-zinc-900 dark:text-white leading-tight"
               >
                 {new Date(family.created_at).toLocaleDateString("id-ID", {
                   month: "short",
@@ -107,23 +107,23 @@
                 })}
               </span>
               <span
-                class="text-[10px] uppercase tracking-tighter text-zinc-500 font-bold"
+                class="text-[10px] uppercase tracking-wider text-zinc-500 font-bold"
                 >Dibuat</span
               >
             </div>
           </div>
-          <div class="flex items-center gap-2.5">
+          <div class="flex items-center gap-3">
             <div class="p-2 rounded-lg bg-primary/10 border border-primary/20">
               <Info size={18} class="text-primary font-bold" />
             </div>
-            <div class="flex flex-col -space-y-1">
+            <div class="flex flex-col">
               <span
-                class="text-lg font-bold text-zinc-900 dark:text-white leading-none uppercase italic"
+                class="text-lg font-bold text-zinc-900 dark:text-white leading-tight uppercase italic"
               >
                 {myRole}
               </span>
               <span
-                class="text-[10px] uppercase tracking-tighter text-zinc-500 font-bold"
+                class="text-[10px] uppercase tracking-wider text-zinc-500 font-bold"
                 >Peran Anda</span
               >
             </div>
