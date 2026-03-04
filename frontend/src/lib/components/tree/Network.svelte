@@ -107,7 +107,6 @@
       const queue: number[] = [rootID];
       levels[rootID] = 0;
 
-      // Also assign spouse of root to level 0
       if (spouseOf[rootID] !== undefined) {
         levels[spouseOf[rootID]] = 0;
         queue.push(spouseOf[rootID]);
@@ -119,7 +118,6 @@
         const current = queue.shift()!;
         const currentLevel = levels[current];
 
-        // Process children
         const children = childrenOf[current] || [];
         for (const childId of children) {
           if (visited.has(childId)) continue;
@@ -128,7 +126,6 @@
           visited.add(childId);
           queue.push(childId);
 
-          // Assign spouse of child to same level
           if (
             spouseOf[childId] !== undefined &&
             !visited.has(spouseOf[childId])
@@ -140,10 +137,120 @@
         }
       }
 
-      // Fallback: any unvisited node gets a high level
       for (const n of treeData.nodes) {
         if (levels[n.id] === undefined) {
           levels[n.id] = 0;
+        }
+      }
+    }
+
+    // ─── Manual Position Calculation
+    const SPOUSE_GAP = 140; // tight gap between husband & wife
+    const FAMILY_GAP = 400; // wide gap between family units
+    const LEVEL_HEIGHT = 240; // vertical distance between generations
+
+    const positions: Record<number, { x: number; y: number }> = {};
+    const maxLevel = Math.max(...Object.values(levels), 0);
+
+    // Helper: find parent couple midpoint for a node
+    function getParentMidX(nodeId: number): number {
+      for (const e of parentChildEdges) {
+        if (e.to === nodeId) {
+          const px = positions[e.from];
+          if (px) {
+            const sid = spouseOf[e.from];
+            if (sid !== undefined && positions[sid]) {
+              return (px.x + positions[sid].x) / 2;
+            }
+            return px.x;
+          }
+        }
+      }
+      return 0;
+    }
+
+    for (let lv = 0; lv <= maxLevel; lv++) {
+      const nodesAtLevel = treeData.nodes
+        .filter((n: any) => levels[n.id] === lv)
+        .map((n: any) => n.id);
+
+      // Group nodes into couples and singles
+      const placed = new Set<number>();
+      const groups: number[][] = [];
+
+      for (const nodeId of nodesAtLevel) {
+        if (placed.has(nodeId)) continue;
+        placed.add(nodeId);
+
+        const sid = spouseOf[nodeId];
+        if (sid !== undefined && levels[sid] === lv && !placed.has(sid)) {
+          groups.push([nodeId, sid]);
+          placed.add(sid);
+        } else {
+          groups.push([nodeId]);
+        }
+      }
+
+      // Sort groups by parent position (children appear under parents)
+      if (lv > 0) {
+        groups.sort((a, b) => getParentMidX(a[0]) - getParentMidX(b[0]));
+      }
+
+      // Assign x positions
+      let currentX = 0;
+      for (const group of groups) {
+        if (group.length === 2) {
+          positions[group[0]] = {
+            x: currentX,
+            y: lv * LEVEL_HEIGHT,
+          };
+          positions[group[1]] = {
+            x: currentX + SPOUSE_GAP,
+            y: lv * LEVEL_HEIGHT,
+          };
+          currentX += SPOUSE_GAP + FAMILY_GAP;
+        } else {
+          positions[group[0]] = {
+            x: currentX,
+            y: lv * LEVEL_HEIGHT,
+          };
+          currentX += FAMILY_GAP;
+        }
+      }
+
+      // Center the row around x=0
+      const allX = nodesAtLevel.map((id: number) => positions[id]?.x ?? 0);
+      if (allX.length > 0) {
+        const midX = (Math.min(...allX) + Math.max(...allX)) / 2;
+        for (const id of nodesAtLevel) {
+          if (positions[id]) positions[id].x -= midX;
+        }
+      }
+    }
+
+    // Second pass: center child groups under parent couple midpoints
+    for (let lv = 1; lv <= maxLevel; lv++) {
+      const nodesAtLevel = treeData.nodes
+        .filter((n: any) => levels[n.id] === lv)
+        .map((n: any) => n.id);
+
+      // Group by parent couple
+      const parentGroups: Map<string, number[]> = new Map();
+      for (const nodeId of nodesAtLevel) {
+        const pmx = getParentMidX(nodeId);
+        const key = pmx.toFixed(0);
+        if (!parentGroups.has(key)) parentGroups.set(key, []);
+        parentGroups.get(key)!.push(nodeId);
+      }
+
+      for (const [keyStr, childIds] of parentGroups) {
+        const parentMidX = parseFloat(keyStr);
+        const childXs = childIds.map((id) => positions[id]?.x ?? 0);
+        const childMidX = (Math.min(...childXs) + Math.max(...childXs)) / 2;
+        const offset = parentMidX - childMidX;
+
+        for (const id of childIds) {
+          if (positions[id]) positions[id].x += offset;
         }
       }
     }
@@ -152,7 +259,8 @@
     const nodes = new DataSet(
       treeData.nodes.map((n: any) => ({
         id: n.id,
-        level: levels[n.id] ?? 0,
+        x: positions[n.id]?.x ?? 0,
+        y: positions[n.id]?.y ?? 0,
         label: n.nickname || n.full_name.split(" ")[0],
         title: `
           <div class="px-3 py-2 space-y-1">
@@ -185,20 +293,15 @@
       })),
     );
 
-    // Deduplicate parent_child edges: if both spouses have parent_child to the same child,
-    // only keep ONE edge (from the first parent found).
-    const seenChildEdges = new Set<number>(); // Set of child IDs that already have a parent_child edge
+    // Deduplicate parent_child edges
+    const seenChildEdges = new Set<number>();
     const dedupedEdges = treeData.edges.filter((e: any) => {
       const isParentChild =
         e.relationship_type === "parent_child" ||
         e.relationship_type === "parent-child";
 
       if (isParentChild) {
-        // Check if the other parent (spouse) already has an edge to this child
-        if (seenChildEdges.has(e.to)) {
-          // Skip this edge — already have one parent pointing to this child
-          return false;
-        }
+        if (seenChildEdges.has(e.to)) return false;
         seenChildEdges.add(e.to);
       }
       return true;
@@ -245,21 +348,11 @@
         smooth: {
           type: "cubicBezier",
           forceDirection: "vertical",
-          roundness: 0.4,
+          roundness: 0.5,
         },
       },
       layout: {
-        hierarchical: {
-          enabled: true,
-          direction: "UD",
-          sortMethod: "directed",
-          levelSeparation: 220,
-          nodeSpacing: 300,
-          treeSpacing: 400,
-          parentCentralization: true,
-          edgeMinimization: true,
-          blockShifting: true,
-        },
+        // No hierarchical — we use manual x,y positions
       },
       physics: {
         enabled: false,
