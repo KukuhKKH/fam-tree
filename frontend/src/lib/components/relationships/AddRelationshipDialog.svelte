@@ -9,6 +9,8 @@
     Users,
     ArrowRight,
     Check,
+    Info,
+    Save,
   } from "lucide-svelte";
   import PersonSelect from "$lib/components/persons/PersonSelect.svelte";
   import { apiFetch } from "$lib/api";
@@ -85,37 +87,32 @@
         {...props}
         variant="outline"
         {style}
-        class="gap-2 rounded-xl border border-dashed border-zinc-300/70 dark:border-zinc-700/70 hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-colors cursor-pointer"
+        class="gap-2 rounded-2xl h-12 font-bold border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all cursor-pointer shadow-sm"
       >
-        <Link size={16} />
+        <Link size={18} />
         <span>Hubungkan Orang</span>
       </Button>
     {/snippet}
   </Dialog.Trigger>
 
-  <!-- Content -->
   <Dialog.Content
-    class="sm:max-w-[560px] p-0 overflow-hidden border-zinc-200/70 dark:border-zinc-800/70"
+    class="sm:max-w-[640px] p-0 overflow-hidden rounded-[2.5rem] border-zinc-200/70 dark:border-zinc-800/70 shadow-2xl"
   >
-    <form onsubmit={handleSubmit} class="flex flex-col">
+    <form onsubmit={handleSubmit} class="flex flex-col max-h-[90vh]">
       <!-- Header -->
-      <div class="px-6 pt-6 pb-4 bg-white dark:bg-zinc-950">
+      <div class="px-8 pt-8 pb-4 bg-white dark:bg-zinc-950">
         <Dialog.Header class="space-y-1">
-          <div class="flex items-start gap-3">
+          <div class="flex items-start gap-4">
             <div
-              class="p-2.5 rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15"
+              class="p-3 rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20 shadow-sm"
             >
-              <Link size={22} />
+              <Link size={24} />
             </div>
             <div class="min-w-0">
-              <Dialog.Title
-                class="text-xl sm:text-2xl font-semibold tracking-tight"
-              >
+              <Dialog.Title class="text-2xl font-black tracking-tight">
                 Pembangun Hubungan
               </Dialog.Title>
-              <Dialog.Description
-                class="text-sm text-zinc-500 dark:text-zinc-400"
-              >
+              <Dialog.Description class="text-sm font-medium text-zinc-500">
                 Tentukan koneksi silsilah antar anggota keluarga.
               </Dialog.Description>
             </div>
@@ -123,193 +120,177 @@
         </Dialog.Header>
       </div>
 
-      <!-- Body -->
-      <div class="px-6 py-5 bg-zinc-50/60 dark:bg-zinc-950/30">
-        <div class="grid gap-5">
-          <!-- People Selection -->
+      <!-- Scrollable Body -->
+      <div class="px-8 py-6 overflow-y-auto bg-zinc-50/50 dark:bg-zinc-950/30">
+        <div class="grid gap-8">
+          <!-- People Selection Card -->
           <div
-            class="relative rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200/70 dark:border-zinc-800/70 p-5"
+            class="grid gap-6 p-6 rounded-[2rem] bg-white dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm"
           >
             <div
-              class="grid grid-cols-1 md:grid-cols-[1fr,72px,1fr] items-end gap-4"
+              class="grid grid-cols-1 md:grid-cols-[1fr,48px,1fr] items-end gap-4"
             >
               <div class="space-y-2">
                 <Label
-                  class="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400"
+                  class="text-[10px] font-black uppercase tracking-widest text-zinc-400 px-1"
+                  >Orang Pertama</Label
                 >
-                  Orang Pertama
-                </Label>
                 <PersonSelect
                   {persons}
                   bind:value={personAId}
                   placeholder="Pilih Orang"
-                  class="w-full rounded-xl border-zinc-200 dark:border-zinc-800 focus-within:ring-2 focus-within:ring-primary/30"
                 />
               </div>
 
-              <!-- Connector -->
-              <div class="flex md:flex-col items-center justify-center">
+              <div class="flex items-center justify-center pb-1">
                 <div
-                  class="hidden md:block w-px h-6 bg-zinc-200 dark:bg-zinc-800"
-                ></div>
-                <div
-                  class="mt-2 mb-2 md:mt-0 md:mb-0 h-11 w-11 rounded-2xl bg-primary text-primary-foreground grid place-items-center shadow-sm ring-1 ring-primary/20"
+                  class="h-10 w-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 grid place-items-center"
                 >
                   <ArrowRight size={18} class="md:rotate-0 rotate-90" />
                 </div>
-                <div
-                  class="hidden md:block w-px h-6 bg-zinc-200 dark:bg-zinc-800"
-                ></div>
               </div>
 
               <div class="space-y-2">
                 <Label
-                  class="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400"
+                  class="text-[10px] font-black uppercase tracking-widest text-zinc-400 px-1"
+                  >Orang Kedua</Label
                 >
-                  Orang Kedua
-                </Label>
                 <PersonSelect
                   {persons}
                   bind:value={personBId}
                   placeholder="Pilih Orang"
-                  class="w-full rounded-xl border-zinc-200 dark:border-zinc-800 focus-within:ring-2 focus-within:ring-primary/30"
                 />
               </div>
             </div>
           </div>
 
-          <!-- Relationship Type -->
-          <div
-            class="rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200/70 dark:border-zinc-800/70 p-5"
-          >
+          <!-- Relationship Type Selection -->
+          <div class="space-y-4">
             <Label
-              class="font-semibold flex items-center gap-2 text-zinc-800 dark:text-zinc-200"
+              class="text-xs font-black uppercase tracking-widest text-zinc-400 px-1"
+              >Jenis Hubungan</Label
             >
-              <Users size={18} class="text-primary" />
-              Pilih Jenis Hubungan
-            </Label>
-
-            <div class="mt-4 grid grid-cols-1 gap-2.5">
+            <div class="grid grid-cols-1 gap-3">
               {#each relationshipOptions as opt}
                 <button
                   type="button"
                   onclick={() => (relationshipType = opt.value)}
-                  class="group w-full text-left rounded-2xl border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30
+                  class="group relative flex items-center gap-4 p-4 rounded-2xl border transition-all text-left
                     {relationshipType === opt.value
-                    ? 'border-primary/40 bg-primary/5'
-                    : 'border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50/40 dark:bg-zinc-900/20 hover:bg-white dark:hover:bg-zinc-900/35 hover:border-zinc-300 dark:hover:border-zinc-700'}"
+                    ? 'bg-primary/5 border-primary shadow-sm'
+                    : 'bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}"
                 >
-                  <div class="flex items-center justify-between p-4">
-                    <div class="flex items-center gap-3">
-                      <div
-                        class="h-10 w-10 rounded-xl grid place-items-center ring-1 transition-colors
-                          {relationshipType === opt.value
-                          ? 'bg-primary text-primary-foreground ring-primary/20'
-                          : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 ring-zinc-200/70 dark:ring-zinc-800/70 group-hover:text-primary'}"
-                      >
-                        {#if opt.value === "parent_child"}
-                          <Users size={18} />
-                        {:else if opt.value === "spouse"}
-                          <Heart size={18} />
-                        {:else}
-                          <Link size={18} />
-                        {/if}
-                      </div>
-
-                      <div class="leading-tight">
-                        <div
-                          class="font-semibold text-sm
-                            {relationshipType === opt.value
-                            ? 'text-primary'
-                            : 'text-zinc-800 dark:text-zinc-200'}"
-                        >
-                          {opt.label}
-                        </div>
-                        <div
-                          class="mt-1 text-xs text-zinc-500 dark:text-zinc-400"
-                        >
-                          {#if opt.value === "parent_child"}
-                            Orang pertama adalah Ayah/Ibu
-                          {:else if opt.value === "spouse"}
-                            Keduanya adalah suami & istri
-                          {:else}
-                            Keduanya adalah saudara sekandung
-                          {/if}
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Radio indicator (lebih “radio-like”) -->
-                    <div
-                      class="h-5 w-5 rounded-full border grid place-items-center transition-colors
-                        {relationshipType === opt.value
-                        ? 'border-primary bg-primary'
-                        : 'border-zinc-300 dark:border-zinc-700 bg-transparent'}"
-                    >
-                      {#if relationshipType === opt.value}
-                        <Check size={12} class="text-white" strokeWidth={3.5} />
-                      {/if}
-                    </div>
+                  <div
+                    class="size-12 rounded-xl flex items-center justify-center transition-colors
+                    {relationshipType === opt.value
+                      ? 'bg-primary text-white'
+                      : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-400 group-hover:text-primary'}"
+                  >
+                    {#if opt.value === "parent_child"}
+                      <Users size={20} />
+                    {:else if opt.value === "spouse"}
+                      <Heart size={20} />
+                    {:else}
+                      <Link size={20} />
+                    {/if}
                   </div>
+
+                  <div class="flex-1">
+                    <p
+                      class="font-bold text-sm {relationshipType === opt.value
+                        ? 'text-primary'
+                        : 'text-zinc-900 dark:text-white'}"
+                    >
+                      {opt.label}
+                    </p>
+                    <p class="text-xs text-zinc-500 leading-tight">
+                      {#if opt.value === "parent_child"}
+                        Hubungan vertikal antar generasi.
+                      {:else if opt.value === "spouse"}
+                        Hubungan horizontal pasutri.
+                      {:else}
+                        Hubungan mendatar satu keturunan.
+                      {/if}
+                    </p>
+                  </div>
+
+                  {#if relationshipType === opt.value}
+                    <div
+                      class="size-6 rounded-full bg-primary text-white flex items-center justify-center"
+                    >
+                      <Check size={14} strokeWidth={3} />
+                    </div>
+                  {/if}
                 </button>
               {/each}
             </div>
+          </div>
 
-            <!-- Info -->
+          <!-- Preview & Confirmation -->
+          <div
+            class="p-5 rounded-2xl bg-zinc-900 text-white shadow-xl space-y-3"
+          >
             <div
-              class="mt-4 rounded-2xl border border-zinc-200/70 dark:border-zinc-800/70 bg-zinc-50 dark:bg-zinc-900/20 p-4"
+              class="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500"
             >
-              <p class="text-xs text-zinc-600 dark:text-zinc-400 flex gap-2">
-                <span class="mt-[1px] text-primary">ℹ️</span>
-                <span>
-                  {#if relationshipType === "parent_child"}
-                    <strong class="text-zinc-900 dark:text-zinc-100">
-                      {selectedPersonA?.full_name || "..."}
-                    </strong>
-                    akan tercatat sebagai Orang Tua dari
-                    <strong class="text-zinc-900 dark:text-zinc-100">
-                      {selectedPersonB?.full_name || "..."}</strong
-                    >.
-                  {:else if relationshipType === "spouse"}
-                    <strong class="text-zinc-900 dark:text-zinc-100">
-                      {selectedPersonA?.full_name || "..."}
-                    </strong>
-                    dan
-                    <strong class="text-zinc-900 dark:text-zinc-100">
-                      {selectedPersonB?.full_name || "..."}
-                    </strong>
-                    akan tercatat sebagai pasangan.
-                  {:else}
-                    <strong class="text-zinc-900 dark:text-zinc-100">
-                      {selectedPersonA?.full_name || "..."}
-                    </strong>
-                    dan
-                    <strong class="text-zinc-900 dark:text-zinc-100">
-                      {selectedPersonB?.full_name || "..."}
-                    </strong>
-                    akan tercatat sebagai saudara kandung.
-                  {/if}
-                </span>
-              </p>
+              <Info size={12} /> Konfirmasi Hubungan
             </div>
+            <p class="text-sm leading-relaxed">
+              {#if relationshipType === "parent_child"}
+                <span class="font-black text-primary"
+                  >{selectedPersonA?.full_name || "..."}</span
+                >
+                adalah <strong>Orang Tua</strong> dari
+                <span class="font-black text-primary"
+                  >{selectedPersonB?.full_name || "..."}</span
+                >.
+              {:else if relationshipType === "spouse"}
+                <span class="font-black text-primary"
+                  >{selectedPersonA?.full_name || "..."}</span
+                >
+                dan
+                <span class="font-black text-primary"
+                  >{selectedPersonB?.full_name || "..."}</span
+                >
+                adalah <strong>Pasangan</strong>.
+              {:else}
+                <span class="font-black text-primary"
+                  >{selectedPersonA?.full_name || "..."}</span
+                >
+                dan
+                <span class="font-black text-primary"
+                  >{selectedPersonB?.full_name || "..."}</span
+                >
+                adalah <strong>Saudara Kandung</strong>.
+              {/if}
+            </p>
           </div>
         </div>
       </div>
 
-      <!-- Footer -->
+      <!-- Footer Buttons -->
       <div
-        class="px-6 py-5 bg-white dark:bg-zinc-950 border-t border-zinc-200/70 dark:border-zinc-800/70"
+        class="p-6 bg-white dark:bg-zinc-950 border-t border-zinc-100 dark:border-zinc-800 sm:px-8 sm:py-6"
       >
-        <Dialog.Footer class="w-full">
+        <Dialog.Footer class="flex flex-row gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            onclick={() => (open = false)}
+            class="hidden sm:flex rounded-2xl h-12 px-6 font-bold text-zinc-500 cursor-pointer"
+          >
+            Batal
+          </Button>
           <Button
             type="submit"
-            class="w-full rounded-2xl h-12 font-semibold text-base shadow-sm cursor-pointer"
+            class="flex-1 rounded-2xl h-12 font-bold text-base shadow-xl shadow-primary/20 cursor-pointer transition-all active:scale-[0.98]"
             disabled={loading}
           >
             {#if loading}
               <Loader2 class="mr-2 h-5 w-5 animate-spin" />
-              Menghubungkan...
+              Menyimpan...
             {:else}
+              <Save size={20} class="mr-2" />
               Simpan Hubungan
             {/if}
           </Button>

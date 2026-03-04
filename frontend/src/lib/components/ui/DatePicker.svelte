@@ -33,28 +33,27 @@
     }
   }
 
-  let dateValue = $state<DateValue | undefined>(safeParse(value));
+  let dateValue = $state<DateValue | undefined>(undefined);
+  let initialized = false;
 
+  // Sync external value → internal dateValue
   $effect(() => {
-    if (dateValue) {
-      value = dateValue.toString();
-    } else {
-      value = "";
+    const parsed = safeParse(value);
+    if (parsed && (!dateValue || dateValue.toString() !== parsed.toString())) {
+      dateValue = parsed;
+    } else if (!value && dateValue) {
+      dateValue = undefined;
     }
+    // Mark as initialized after first sync
+    initialized = true;
   });
 
-  // Sync if value changed from outside
+  // Sync internal dateValue → external value (only after initialization)
   $effect(() => {
-    if (value) {
-      const parsed = safeParse(value);
-      if (
-        parsed &&
-        (!dateValue || dateValue.toString() !== parsed.toString())
-      ) {
-        dateValue = parsed;
-      }
-    } else if (dateValue) {
-      dateValue = undefined;
+    if (!initialized) return;
+    const newVal = dateValue ? dateValue.toString() : "";
+    if (newVal !== value) {
+      value = newVal;
     }
   });
 
