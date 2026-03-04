@@ -6,14 +6,16 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
     const { slug } = params;
 
     try {
-        const [family, members] = await Promise.all([
+        const [family, members, persons] = await Promise.all([
             apiFetch(`/families/${slug}`, { fetch }),
-            apiFetch(`/families/${slug}/members`, { fetch })
+            apiFetch(`/families/${slug}/members`, { fetch }),
+            apiFetch(`/families/${slug}/persons`, { fetch })
         ]);
 
         return {
             family,
             members,
+            persons,
             slug
         };
     } catch (err: any) {

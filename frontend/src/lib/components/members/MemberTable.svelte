@@ -15,10 +15,13 @@
   import { apiFetch } from "$lib/api";
   import { toast } from "svelte-sonner";
   import { invalidateAll } from "$app/navigation";
+  import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
 
   let { members = [], familySlug, myRole } = $props();
 
   let loadingId = $state<number | null>(null);
+  let confirmOpen = $state(false);
+  let userToRemove = $state<{ id: number; name: string } | null>(null);
 
   const roles = [
     { value: "owner", label: "Owner", icon: ShieldCheck, color: "bg-red-500" },
@@ -44,14 +47,10 @@
     }
   }
 
-  async function removeMember(userId: number, userName: string) {
-    if (
-      !confirm(
-        `Apakah Anda yakin ingin mengeluarkan ${userName} dari keluarga ini?`,
-      )
-    )
-      return;
+  async function removeMember() {
+    if (!userToRemove) return;
 
+    const { id: userId, name: userName } = userToRemove;
     loadingId = userId;
     try {
       await apiFetch(`/families/${familySlug}/members/${userId}`, {
@@ -64,7 +63,14 @@
       toast.error(err.message || "Gagal mengeluarkan anggota");
     } finally {
       loadingId = null;
+      confirmOpen = false;
+      userToRemove = null;
     }
+  }
+
+  function startRemoveMember(userId: number, userName: string) {
+    userToRemove = { id: userId, name: userName };
+    confirmOpen = true;
   }
 
   const canManage = $derived(myRole === "owner" || myRole === "admin");
@@ -155,7 +161,7 @@
                   <DropdownMenu.Separator />
                   <DropdownMenu.Item
                     onclick={() =>
-                      removeMember(member.user_id, member.user_name)}
+                      startRemoveMember(member.user_id, member.user_name)}
                     class="text-destructive gap-2 focus:text-destructive cursor-pointer"
                   >
                     <UserMinus size={14} />
@@ -183,3 +189,12 @@
     </Table.Body>
   </Table.Root>
 </div>
+
+<ConfirmDialog
+  bind:open={confirmOpen}
+  loading={loadingId !== null}
+  onConfirm={removeMember}
+  title={`Keluarkan ${userToRemove?.name}?`}
+  description="Anggota ini akan kehilangan akses ke dashboard keluarga ini. Anda dapat mengundangnya kembali nanti."
+  confirmText="Keluarkan"
+/>

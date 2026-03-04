@@ -9,12 +9,14 @@
   import { apiFetch } from "$lib/api";
   import { toast } from "svelte-sonner";
   import { invalidateAll, goto } from "$app/navigation";
+  import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
 
   let { family } = $props();
 
   let open = $state(false);
   let loading = $state(false);
   let deleting = $state(false);
+  let confirmDeleteOpen = $state(false);
 
   let form = $state({
     name: family?.name || "",
@@ -83,13 +85,6 @@
   }
 
   async function deleteFamily() {
-    if (
-      !confirm(
-        `TINDAKAN BERBAHAYA!\n\nApakah Anda yakin ingin menghapus keluarga "${family.name}"? Semua data silsilah di dalamnya akan hilang selamanya.`,
-      )
-    )
-      return;
-
     deleting = true;
     try {
       await apiFetch(`/families/${family.slug}`, {
@@ -103,6 +98,7 @@
       toast.error(err.message || "Gagal menghapus keluarga");
     } finally {
       deleting = false;
+      confirmDeleteOpen = false;
     }
   }
 </script>
@@ -190,7 +186,7 @@
         <Button
           variant="destructive"
           class="w-full sm:w-auto rounded-xl gap-2 cursor-pointer"
-          onclick={deleteFamily}
+          onclick={() => (confirmDeleteOpen = true)}
           disabled={deleting}
         >
           {#if deleting}
@@ -222,3 +218,12 @@
     </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>
+
+<ConfirmDialog
+  bind:open={confirmDeleteOpen}
+  loading={deleting}
+  onConfirm={deleteFamily}
+  title={`Hapus Keluarga "${family.name}"?`}
+  description="TINDAKAN BERBAHAYA! Semua data silsilah, person, dan hubungan di dalam keluarga ini akan dihapus secara permanen dan tidak dapat dikembalikan."
+  confirmText="Ya, Hapus Permanen"
+/>
