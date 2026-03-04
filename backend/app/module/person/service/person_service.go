@@ -288,6 +288,38 @@ func (s *personService) CreateRelationship(familySlug string, userID uint64, req
 		return response.RelationshipResponse{}, err
 	}
 
+	// Auto-create parent_child for spouse:
+	// If we just created parent_child(A→child), find if A has a spouse B,
+	// then auto-create parent_child(B→child) if it doesn't already exist.
+	if req.RelationshipType == schema.RelationshipParentChild {
+		parentID := req.PersonAID
+		childID := req.PersonBID
+
+		rels, _ := s.relationshipRepo.ListByPersonID(parentID, family.ID)
+		for _, r := range rels {
+			if r.RelationshipType != schema.RelationshipSpouse {
+				continue
+			}
+
+			spouseID := r.PersonBID
+			if r.PersonBID == parentID {
+				spouseID = r.PersonAID
+			}
+
+			// Auto-create if not duplicate
+			if !s.relationshipRepo.ExistsDuplicate(family.ID, spouseID, childID, schema.RelationshipParentChild) {
+				spouseRel := &schema.Relationship{
+					FamilyID:         family.ID,
+					PersonAID:        spouseID,
+					PersonBID:        childID,
+					RelationshipType: schema.RelationshipParentChild,
+					Metadata:         []byte("{}"),
+				}
+				_, _ = s.relationshipRepo.Create(spouseRel)
+			}
+		}
+	}
+
 	return response.FromRelationshipSchema(created), nil
 }
 
@@ -348,15 +380,28 @@ func (s *personService) GetTree(familySlug string, userID uint64) (response.Tree
 
 	nodes := make([]response.TreeNode, 0, len(persons))
 	for _, p := range persons {
-		nodes = append(nodes, response.TreeNode{
-			ID:       p.ID,
-			FullName: p.FullName,
-			Nickname: p.Nickname,
-			Gender:   p.Gender,
-			IsAlive:  p.IsAlive,
-			PhotoURL: p.PhotoURL,
-			UserID:   p.UserID,
-		})
+		node := response.TreeNode{
+			ID:         p.ID,
+			FullName:   p.FullName,
+			Nickname:   p.Nickname,
+			Gender:     p.Gender,
+			BirthPlace: p.BirthPlace,
+			IsAlive:    p.IsAlive,
+			DeathPlace: p.DeathPlace,
+			PhotoURL:   p.PhotoURL,
+			Bio:        p.Bio,
+			UserID:     p.UserID,
+		}
+
+		if p.BirthDate.Valid {
+			node.BirthDate = &p.BirthDate.Time
+		}
+
+		if p.DeathDate.Valid {
+			node.DeathDate = &p.DeathDate.Time
+		}
+
+		nodes = append(nodes, node)
 	}
 
 	edges := make([]response.TreeEdge, 0, len(rels))
@@ -369,7 +414,42 @@ func (s *personService) GetTree(familySlug string, userID uint64) (response.Tree
 		})
 	}
 
-	return response.TreeResponse{Nodes: nodes, Edges: edges}, nil
+	// Calculate the Root Node (Patriarch/Matriarch)
+	// A person is a root if they have no parents in this family.
+	// We prioritize those who HAVE children (patriarchs/matriarchs).
+	hasParent := make(map[uint64]bool)
+	hasChildren := make(map[uint64]bool)
+	for _, r := range rels {
+		if r.RelationshipType == "parent_child" {
+			hasParent[r.PersonBID] = true
+			hasChildren[r.PersonAID] = true
+		}
+	}
+
+	var rootID uint64
+	// Strategy: find someone who has children but no parent.
+	// If multiple, pick the oldest (earliest birth date) or the one with most descendants.
+	for _, p := range persons {
+		if !hasParent[p.ID] && hasChildren[p.ID] {
+			if rootID == 0 {
+				rootID = p.ID
+			} else {
+				// Potential tie-breaker: older person stays as root
+				// For now, first found is usually the oldest due to database order/creation
+			}
+		}
+	}
+
+	// Fallback: if no clear patriarch, pick the first person
+	if rootID == 0 && len(persons) > 0 {
+		rootID = persons[0].ID
+	}
+
+	return response.TreeResponse{
+		Nodes:  nodes,
+		Edges:  edges,
+		RootID: rootID,
+	}, nil
 }
 
 func (s *personService) GetAncestors(familySlug string, userID uint64, personID uint64) ([]response.PersonResponse, error) {

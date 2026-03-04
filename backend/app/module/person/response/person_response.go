@@ -37,13 +37,18 @@ type RelationshipResponse struct {
 
 // TreeNode is a single person node for frontend visualization (Cytoscape/D3 compatible)
 type TreeNode struct {
-	ID       uint64  `json:"id"`
-	FullName string  `json:"full_name"`
-	Nickname string  `json:"nickname"`
-	Gender   string  `json:"gender"`
-	IsAlive  bool    `json:"is_alive"`
-	PhotoURL string  `json:"photo_url"`
-	UserID   *uint64 `json:"user_id"`
+	ID         uint64     `json:"id"`
+	FullName   string     `json:"full_name"`
+	Nickname   string     `json:"nickname"`
+	Gender     string     `json:"gender"`
+	BirthDate  *time.Time `json:"birth_date"`
+	BirthPlace string     `json:"birth_place"`
+	IsAlive    bool       `json:"is_alive"`
+	DeathDate  *time.Time `json:"death_date"`
+	DeathPlace string     `json:"death_place"`
+	PhotoURL   string     `json:"photo_url"`
+	Bio        string     `json:"bio"`
+	UserID     *uint64    `json:"user_id"`
 }
 
 // TreeEdge is a relationship edge for frontend visualization
@@ -56,8 +61,9 @@ type TreeEdge struct {
 
 // TreeResponse is the full tree payload sent to the frontend
 type TreeResponse struct {
-	Nodes []TreeNode `json:"nodes"`
-	Edges []TreeEdge `json:"edges"`
+	Nodes  []TreeNode `json:"nodes"`
+	Edges  []TreeEdge `json:"edges"`
+	RootID uint64     `json:"root_id"`
 }
 
 func FromPersonSchema(p *schema.Person) PersonResponse {
