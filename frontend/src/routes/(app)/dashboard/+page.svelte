@@ -6,6 +6,8 @@
   import CreateFamilyDialog from "$lib/components/CreateFamilyDialog.svelte";
 
   let families = $derived(page.data.families || []);
+  let totalPersons = $derived(page.data.totalPersons || 0);
+  let totalRelationships = $derived(page.data.totalRelationships || 0);
 
   const stats = $derived([
     {
@@ -16,13 +18,13 @@
     },
     {
       label: "Anggota Silsilah",
-      value: "-",
+      value: totalPersons.toString(),
       icon: TreeDeciduous,
       color: "text-green-500",
     },
     {
       label: "Relasi",
-      value: "-",
+      value: totalRelationships.toString(),
       icon: Heart,
       color: "text-red-500",
     },

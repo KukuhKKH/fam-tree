@@ -24,6 +24,7 @@
   const person = $derived(data.person);
   const family = $derived(data.family);
   const persons = $derived(data.persons);
+  const relationships = $derived(data.relationships || []);
   const slug = $derived(data.slug);
 
   const canEdit = $derived(family.my_role !== "viewer");
@@ -49,13 +50,45 @@
   const age = $derived(
     calculateAge(person.birth_date, person.is_alive, person.death_date),
   );
+
+  // Compute relationships for this person
+  const personRelationships = $derived(
+    relationships
+      .filter(
+        (r: any) => r.person_a_id === person.id || r.person_b_id === person.id,
+      )
+      .map((r: any) => {
+        const isA = r.person_a_id === person.id;
+        const relatedId = isA ? r.person_b_id : r.person_a_id;
+        const relatedPerson = persons.find((p: any) => p.id === relatedId);
+        if (!relatedPerson) return null;
+
+        let label = "";
+        if (r.relationship_type === "parent_child") {
+          if (isA) {
+            // person is parent → related is child
+            label = "Anak";
+          } else {
+            // person is child → related is parent
+            label = relatedPerson.gender === "male" ? "Ayah" : "Ibu";
+          }
+        } else if (r.relationship_type === "spouse") {
+          label = relatedPerson.gender === "male" ? "Suami" : "Istri";
+        } else if (r.relationship_type === "sibling") {
+          label = "Saudara";
+        }
+
+        return { ...r, relatedPerson, label };
+      })
+      .filter(Boolean),
+  );
 </script>
 
 <svelte:head>
   <title>{person.full_name} | Silsilah</title>
 </svelte:head>
 
-<div class="max-w-7xl mx-auto space-y-10 pb-20">
+<div class="space-y-8 mx-auto space-y-10 pb-20">
   <!-- Premium Breadcrumbs / Back Navigation -->
   <nav class="flex items-center gap-2 text-sm font-medium text-zinc-500 mb-2">
     <a
@@ -360,7 +393,7 @@
             <span
               class="size-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center"
             >
-              <Plus size={22} />
+              <Heart size={22} />
             </span>
             Hubungan Keluarga
           </h3>
@@ -373,12 +406,9 @@
           {/if}
         </div>
 
-        <div class="relative group">
+        {#if personRelationships.length === 0}
           <div
-            class="absolute inset-0 bg-primary/5 rounded-[2rem] blur-2xl opacity-0 group-hover:opacity-100 transition-opacity"
-          ></div>
-          <div
-            class="relative bg-zinc-50 dark:bg-zinc-950 border border-dotted border-zinc-200 dark:border-zinc-800 p-12 rounded-[2rem] flex flex-col items-center text-center space-y-4"
+            class="bg-zinc-50 dark:bg-zinc-950 border border-dotted border-zinc-200 dark:border-zinc-800 p-12 rounded-[2rem] flex flex-col items-center text-center space-y-4"
           >
             <div
               class="p-4 rounded-full bg-white dark:bg-zinc-900 shadow-sm ring-1 ring-zinc-100 dark:ring-zinc-800"
@@ -389,15 +419,55 @@
               <p
                 class="text-lg font-bold text-zinc-800 dark:text-zinc-200 mb-1"
               >
-                Visualisasi Hubungan (Segera!)
+                Belum Ada Hubungan
               </p>
               <p class="text-sm text-zinc-500 max-w-sm mx-auto">
-                Kami sedang mengerjakan bagan interaktif yang akan memetakan
-                person ini dengan semua kerabatnya secara otomatis.
+                Klik tombol di atas untuk menambahkan hubungan keluarga seperti
+                orang tua, pasangan, atau saudara.
               </p>
             </div>
           </div>
-        </div>
+        {:else}
+          <div class="grid grid-cols-1 gap-4">
+            {#each personRelationships as rel}
+              <a
+                href={`/families/${slug}/persons/${rel.relatedPerson.id}`}
+                class="flex items-center gap-5 p-5 rounded-[1.8rem] bg-zinc-50/70 dark:bg-zinc-950/40 border border-zinc-100 dark:border-zinc-800/50 hover:bg-white dark:hover:bg-zinc-900 hover:shadow-lg hover:shadow-zinc-200/20 dark:hover:shadow-none transition-all group"
+              >
+                <div
+                  class="size-14 rounded-2xl overflow-hidden ring-1 ring-zinc-200 dark:ring-zinc-700 shrink-0 {rel
+                    .relatedPerson.gender === 'male'
+                    ? 'bg-blue-50 dark:bg-blue-950/30'
+                    : 'bg-rose-50 dark:bg-rose-950/30'} flex items-center justify-center text-2xl font-black uppercase"
+                >
+                  <span
+                    class={rel.relatedPerson.gender === "male"
+                      ? "text-blue-600"
+                      : "text-rose-500"}
+                  >
+                    {rel.relatedPerson.full_name?.substring(0, 1) || "?"}
+                  </span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p
+                    class="text-base font-black text-zinc-800 dark:text-zinc-200 truncate group-hover:text-primary transition-colors"
+                  >
+                    {rel.relatedPerson.full_name}
+                  </p>
+                  <p
+                    class="text-xs font-bold text-zinc-400 uppercase tracking-wide"
+                  >
+                    {rel.label}
+                  </p>
+                </div>
+                <ChevronRight
+                  size={18}
+                  class="text-zinc-300 group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0"
+                />
+              </a>
+            {/each}
+          </div>
+        {/if}
       </section>
     </div>
 
