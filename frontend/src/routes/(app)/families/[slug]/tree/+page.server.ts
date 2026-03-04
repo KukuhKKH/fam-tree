@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
             apiFetch(`/families/${slug}`, { fetch }),
             apiFetch(`/families/${slug}/tree`, { fetch })
         ]);
-console.info(treeData)
+
         return {
             family,
             treeData,
