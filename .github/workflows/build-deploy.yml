@@ -44,9 +44,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Set Lowercase Variables
         run: |
-          echo "IMAGE_NAMESPACE=${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]' > image_namespace.txt
-          echo "IMAGE_NAMESPACE=$(cat image_namespace.txt)" >> $GITHUB_ENV
-          rm image_namespace.txt
+          echo "IMAGE_NAMESPACE=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Build and push Base Images
         run: |
