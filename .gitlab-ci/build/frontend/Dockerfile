@@ -1,3 +1,6 @@
+ARG REGISTRY=ghcr.io
+ARG IMAGE_NAMESPACE
+
 FROM node:22-alpine AS builder
 
 WORKDIR /app
@@ -12,8 +15,6 @@ COPY . .
 
 RUN pnpm build
 
-ARG REGISTRY=ghcr.io
-ARG IMAGE_NAMESPACE
 FROM ${REGISTRY}/${IMAGE_NAMESPACE}/silsilah-frontend-base:latest
 
 WORKDIR /app
