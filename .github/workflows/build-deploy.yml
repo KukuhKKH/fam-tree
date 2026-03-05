@@ -81,7 +81,8 @@ jobs:
 
   deploy:
     needs: build-app
-    runs-on: self-hosted
+    if: always() && needs.build-app.result == 'success'
+    runs-on: [self-hosted, linux, x64]
     env:
       API_DOMAIN: ${{ vars.API_DOMAIN }}
       WEB_DOMAIN: ${{ vars.WEB_DOMAIN }}
