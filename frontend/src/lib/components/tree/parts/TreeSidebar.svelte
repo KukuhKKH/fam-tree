@@ -19,13 +19,14 @@
     network,
     getGenderColor,
     getGenderLabel,
+    readOnly = false,
   } = $props();
 
   function selectAnotherPerson(id: number) {
     selectedPersonId = id;
     network?.focus(id, {
       scale: 1,
-      animation: { duration: 500 },
+      animation: { duration: 1000, easingFunction: "easeInOutQuart" },
     });
     network?.selectNodes([id]);
   }
@@ -33,10 +34,10 @@
 
 {#if selectedPerson}
   <div
-    class="absolute top-8 right-8 bottom-8 w-[22rem] sm:w-[26rem] flex flex-col pointer-events-none"
+    class="absolute inset-4 sm:inset-auto sm:top-8 sm:right-8 sm:bottom-8 sm:w-[26rem] flex flex-col pointer-events-none z-50"
   >
     <div
-      class="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-3xl border border-zinc-200/50 dark:border-zinc-800/50 rounded-[3rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col pointer-events-auto ring-1 ring-zinc-950/5 dark:ring-white/5 animate-in fade-in slide-in-from-right-12 duration-700"
+      class="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-3xl border border-zinc-200/50 dark:border-zinc-800/50 rounded-[2rem] sm:rounded-[3rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col pointer-events-auto ring-1 ring-zinc-950/5 dark:ring-white/5 animate-in fade-in slide-in-from-bottom-8 sm:slide-in-from-right-12 duration-700 h-full"
     >
       <!-- Header Image & Banner -->
       <div class="relative h-24 bg-zinc-100 dark:bg-zinc-800 rounded-t-[3rem]">
@@ -279,18 +280,20 @@
         {/if}
 
         <!-- Action Buttons -->
-        <div class="pt-6 flex flex-col gap-3">
-          <Button
-            class="w-full rounded-[1.8rem] h-14 font-black gap-2 transition-all hover:shadow-2xl hover:shadow-primary/20 cursor-pointer text-base active:scale-95"
-            onclick={() =>
-              goto(`/families/${familySlug}/persons/${selectedPerson.id}`)}
-          >
-            Lihat Profil Lengkap
-            <ChevronRight size={18} />
-          </Button>
+        {#if !readOnly}
+          <div class="pt-6 flex flex-col gap-3">
+            <Button
+              class="w-full rounded-[1.8rem] h-14 font-black gap-2 transition-all hover:shadow-2xl hover:shadow-primary/20 cursor-pointer text-base active:scale-95"
+              onclick={() =>
+                goto(`/families/${familySlug}/persons/${selectedPerson.id}`)}
+            >
+              Lihat Profil Lengkap
+              <ChevronRight size={18} />
+            </Button>
 
-          <EditPersonDialog person={selectedPerson} {familySlug} />
-        </div>
+            <EditPersonDialog person={selectedPerson} {familySlug} />
+          </div>
+        {/if}
       </div>
     </div>
   </div>

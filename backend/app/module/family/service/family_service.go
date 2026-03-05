@@ -23,6 +23,9 @@ type FamilyService interface {
 	GetMembers(slug string, userID uint64) ([]response.FamilyMemberResponse, error)
 	UpdateMemberRole(slug string, userID, targetUserID uint64, req request.UpdateMemberRoleRequest) error
 	RemoveMember(slug string, userID, targetUserID uint64) error
+
+	// Public access (no auth required)
+	GetPublicFamilyDetails(slug string) (response.FamilyResponse, error)
 }
 
 type familyService struct {
@@ -281,4 +284,19 @@ func (s *familyService) RemoveMember(slug string, userID, targetUserID uint64) e
 	}
 
 	return s.familyMemberRepo.Delete(family.ID, targetUserID)
+}
+
+// ─── Public Access ─────────────────────────────────────────────────────────────
+
+func (s *familyService) GetPublicFamilyDetails(slug string) (response.FamilyResponse, error) {
+	family, err := s.familyRepo.FindBySlug(slug)
+	if err != nil {
+		return response.FamilyResponse{}, errors.New("family not found")
+	}
+
+	if family.Visibility == "private" {
+		return response.FamilyResponse{}, errors.New("this family is not publicly accessible")
+	}
+
+	return response.FromFamilySchema(family, "public_viewer"), nil
 }

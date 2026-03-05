@@ -11,7 +11,7 @@
 </script>
 
 <div
-  class="absolute top-8 left-8 right-8 flex flex-col sm:flex-row gap-4 pointer-events-none"
+  class="absolute top-4 left-4 right-4 sm:top-8 sm:left-8 sm:right-8 flex flex-col sm:flex-row gap-3 sm:gap-4 pointer-events-none z-40"
 >
   <div
     class="flex items-center gap-2 p-1.5 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-2xl border border-zinc-200/50 dark:border-zinc-800/50 rounded-[2rem] shadow-2xl pointer-events-auto max-w-sm w-full ring-1 ring-zinc-950/5 dark:ring-white/5"

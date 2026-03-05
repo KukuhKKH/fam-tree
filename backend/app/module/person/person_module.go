@@ -69,4 +69,9 @@ func (r *PersonRouter) RegisterPersonRoutes() {
 
 	// Full tree
 	families.Get("/tree", personCtrl.GetTree)
+
+	// ─── Public routes (no auth) ──────────────────────────────────────────────
+	pub := r.App.Group("/public/families/:slug")
+	pub.Get("/tree", personCtrl.GetPublicTree)
+	pub.Get("/persons", personCtrl.GetPublicPersons)
 }

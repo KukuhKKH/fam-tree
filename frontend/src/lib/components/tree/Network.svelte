@@ -6,7 +6,7 @@
   import TreeLegend from "./parts/TreeLegend.svelte";
   import TreeSidebar from "./parts/TreeSidebar.svelte";
 
-  let { treeData, familySlug } = $props();
+  let { treeData, familySlug, readOnly = false } = $props();
 
   let container: HTMLDivElement;
   let network = $state<Network | null>(null);
@@ -368,6 +368,13 @@
 
     network.on("selectNode", (params: any) => {
       selectedPersonId = params.nodes[0];
+      network?.focus(params.nodes[0], {
+        scale: 1.1,
+        animation: {
+          duration: 1000,
+          easingFunction: "easeInOutQuart",
+        },
+      });
     });
 
     network.on("deselectNode", () => {
@@ -403,7 +410,7 @@
     if (person) {
       network.focus(person.id, {
         scale: 1.2,
-        animation: { duration: 1000, easingFunction: "easeInOutQuad" },
+        animation: { duration: 1200, easingFunction: "easeInOutQuart" },
       });
       network.selectNodes([person.id]);
       selectedPersonId = person.id;
@@ -418,7 +425,7 @@
 </script>
 
 <div
-  class="relative w-full h-[calc(100vh-12rem)] min-h-[600px] rounded-[3.5rem] bg-zinc-50 dark:bg-zinc-950/20 border border-zinc-200 dark:border-zinc-800 shadow-inner overflow-hidden"
+  class="relative w-full h-[calc(100vh-12rem)] min-h-[450px] sm:min-h-[600px] rounded-[2rem] sm:rounded-[3.5rem] bg-zinc-50 dark:bg-zinc-950/20 border border-zinc-200 dark:border-zinc-800 shadow-inner overflow-hidden"
 >
   <!-- The Graph Container -->
   <div bind:this={container} class="w-full h-full"></div>
@@ -443,6 +450,7 @@
     {network}
     {getGenderColor}
     {getGenderLabel}
+    {readOnly}
   />
 </div>
 

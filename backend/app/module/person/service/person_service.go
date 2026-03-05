@@ -26,6 +26,10 @@ type PersonService interface {
 	GetTree(familySlug string, userID uint64) (response.TreeResponse, error)
 	GetAncestors(familySlug string, userID uint64, personID uint64) ([]response.PersonResponse, error)
 	GetDescendants(familySlug string, userID uint64, personID uint64) ([]response.PersonResponse, error)
+
+	// Public access (no auth required)
+	GetPublicTree(familySlug string) (response.TreeResponse, error)
+	GetPublicPersons(familySlug string) ([]response.PersonResponse, error)
 }
 
 type personService struct {
@@ -368,6 +372,11 @@ func (s *personService) GetTree(familySlug string, userID uint64) (response.Tree
 		return response.TreeResponse{}, err
 	}
 
+	return s.buildTree(family)
+}
+
+// buildTree constructs the tree response for a given family.
+func (s *personService) buildTree(family *schema.Family) (response.TreeResponse, error) {
 	persons, err := s.personRepo.ListByFamilyID(family.ID)
 	if err != nil {
 		return response.TreeResponse{}, err
@@ -415,8 +424,6 @@ func (s *personService) GetTree(familySlug string, userID uint64) (response.Tree
 	}
 
 	// Calculate the Root Node (Patriarch/Matriarch)
-	// A person is a root if they have no parents in this family.
-	// We prioritize those who HAVE children (patriarchs/matriarchs).
 	hasParent := make(map[uint64]bool)
 	hasChildren := make(map[uint64]bool)
 	for _, r := range rels {
@@ -427,20 +434,14 @@ func (s *personService) GetTree(familySlug string, userID uint64) (response.Tree
 	}
 
 	var rootID uint64
-	// Strategy: find someone who has children but no parent.
-	// If multiple, pick the oldest (earliest birth date) or the one with most descendants.
 	for _, p := range persons {
 		if !hasParent[p.ID] && hasChildren[p.ID] {
 			if rootID == 0 {
 				rootID = p.ID
-			} else {
-				// Potential tie-breaker: older person stays as root
-				// For now, first found is usually the oldest due to database order/creation
 			}
 		}
 	}
 
-	// Fallback: if no clear patriarch, pick the first person
 	if rootID == 0 && len(persons) > 0 {
 		rootID = persons[0].ID
 	}
@@ -478,6 +479,52 @@ func (s *personService) GetDescendants(familySlug string, userID uint64, personI
 	}
 
 	persons, err := s.personRepo.GetDescendants(personID, family.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]response.PersonResponse, 0, len(persons))
+	for i := range persons {
+		results = append(results, response.FromPersonSchema(&persons[i]))
+	}
+
+	return results, nil
+}
+
+// ─── Public Access ─────────────────────────────────────────────────────────────
+
+// resolvePublicFamily finds a family by slug and ensures it's publicly accessible.
+func (s *personService) resolvePublicFamily(familySlug string) (*schema.Family, error) {
+	family, err := s.familyRepo.FindBySlug(familySlug)
+	if err != nil {
+		return nil, errors.New("family not found")
+	}
+
+	if family.Visibility == "private" {
+		return nil, errors.New("this family is not publicly accessible")
+	}
+
+	return family, nil
+}
+
+func (s *personService) GetPublicTree(familySlug string) (response.TreeResponse, error) {
+	family, err := s.resolvePublicFamily(familySlug)
+	if err != nil {
+		return response.TreeResponse{}, err
+	}
+
+	// Reuse the same tree-building logic with a dummy userID=0
+	// since resolveFamilyAccess already handles public visibility
+	return s.buildTree(family)
+}
+
+func (s *personService) GetPublicPersons(familySlug string) ([]response.PersonResponse, error) {
+	family, err := s.resolvePublicFamily(familySlug)
+	if err != nil {
+		return nil, err
+	}
+
+	persons, err := s.personRepo.ListByFamilyID(family.ID)
 	if err != nil {
 		return nil, err
 	}

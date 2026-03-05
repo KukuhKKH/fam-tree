@@ -26,7 +26,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 		event.locals.user = null;
 	}
 
-	if (event.url.pathname.startsWith('/dashboard') && !event.locals.user) {
+	// Protect app routes (dashboard and families management)
+	const isProtectedRoute = event.url.pathname.startsWith('/dashboard') || 
+		event.url.pathname.startsWith('/families');
+	
+	if (isProtectedRoute && !event.locals.user) {
 		return Response.redirect(`${event.url.origin}/login`, 302);
 	}
 

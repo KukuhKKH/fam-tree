@@ -14,7 +14,10 @@
     Info,
     Calendar,
     BookOpen,
+    Share2,
+    Link,
   } from "lucide-svelte";
+  import { toast } from "svelte-sonner";
 
   const { data } = $props();
   const family = $derived(data.family);
@@ -139,6 +142,20 @@
       </div>
 
       <div class="flex items-center gap-3 self-end md:self-auto">
+        {#if family.visibility !== "private"}
+          <Button
+            variant="outline"
+            class="rounded-xl h-10 px-4 font-bold gap-2 border-zinc-200 dark:border-zinc-800 cursor-pointer"
+            onclick={() => {
+              const url = `${window.location.origin}/s/${family.slug}`;
+              navigator.clipboard.writeText(url);
+              toast.success("Link publik berhasil disalin!");
+            }}
+          >
+            <Share2 size={16} />
+            Bagikan
+          </Button>
+        {/if}
         {#if canManage}
           <FamilySettingsDialog {family} />
           <InviteMemberDialog familySlug={family.slug} />

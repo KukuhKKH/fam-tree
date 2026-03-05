@@ -21,6 +21,7 @@ var NewFamilyModule = fx.Options(
 	fx.Provide(service.NewFamilyService),
 	fx.Provide(controller.NewController),
 	fx.Provide(controller.NewFamilyController),
+	fx.Provide(controller.NewPublicController),
 	fx.Provide(NewFamilyRouter),
 )
 
@@ -56,4 +57,10 @@ func (r *FamilyRouter) RegisterFamilyRoutes() {
 	membersGrp.Get("/", familyCtrl.GetMembers)
 	membersGrp.Patch("/:user_id", familyCtrl.UpdateMemberRole)
 	membersGrp.Delete("/:user_id", familyCtrl.RemoveMember)
+
+	// ─── Public routes (no auth) ──────────────────────────────────────────────
+	publicCtrl := r.Controller.Public
+
+	pub := r.App.Group("/public/families")
+	pub.Get("/:slug", publicCtrl.GetPublicFamily)
 }

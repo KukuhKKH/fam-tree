@@ -11,6 +11,8 @@
   import Network from "$lib/components/tree/Network.svelte";
   import AddRelationshipDialog from "$lib/components/relationships/AddRelationshipDialog.svelte";
 
+  import { toast } from "svelte-sonner";
+
   const { data } = $props();
   const treeData = $derived(data.treeData);
   const family = $derived(data.family);
@@ -24,7 +26,7 @@
 <div class="h-[calc(100vh-6rem)] flex flex-col space-y-6">
   <!-- Top Navigation / Header -->
   <div
-    class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 px-2"
+    class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 px-2 sm:px-4"
   >
     <div class="flex items-center gap-4">
       <Button
@@ -61,6 +63,11 @@
       <Button
         variant="outline"
         class="rounded-2xl h-12 px-5 font-bold gap-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 cursor-pointer shadow-sm"
+        onclick={() => {
+          const url = `${window.location.origin}/s/${slug}`;
+          navigator.clipboard.writeText(url);
+          toast.success("Link publik berhasil disalin!");
+        }}
       >
         <Share2 size={18} />
       </Button>
@@ -68,8 +75,7 @@
   </div>
 
   <!-- Main Network Visualizer -->
-  <div class="flex-1 min-h-0">
+  <div class="flex-1 min-h-0 px-2 sm:px-4 pb-4 sm:pb-6">
     <Network {treeData} familySlug={slug} />
   </div>
 </div>
-```

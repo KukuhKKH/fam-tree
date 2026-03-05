@@ -24,6 +24,10 @@ type PersonController interface {
 	GetTree(c *fiber.Ctx) error
 	GetAncestors(c *fiber.Ctx) error
 	GetDescendants(c *fiber.Ctx) error
+
+	// Public endpoints
+	GetPublicTree(c *fiber.Ctx) error
+	GetPublicPersons(c *fiber.Ctx) error
 }
 
 type personController struct {
@@ -186,4 +190,24 @@ func (ctrl *personController) GetDescendants(c *fiber.Ctx) error {
 	}
 
 	return response.Resp(c, response.Response{Code: fiber.StatusOK, Data: res, Messages: response.Messages{"Descendants retrieved"}})
+}
+
+// ─── Public endpoints ─────────────────────────────────────────────────────────
+
+func (ctrl *personController) GetPublicTree(c *fiber.Ctx) error {
+	res, err := ctrl.svc.GetPublicTree(c.Params("slug"))
+	if err != nil {
+		return response.Resp(c, response.Response{Code: fiber.StatusNotFound, Messages: response.Messages{err.Error()}})
+	}
+
+	return response.Resp(c, response.Response{Code: fiber.StatusOK, Data: res, Messages: response.Messages{"Public tree retrieved"}})
+}
+
+func (ctrl *personController) GetPublicPersons(c *fiber.Ctx) error {
+	res, err := ctrl.svc.GetPublicPersons(c.Params("slug"))
+	if err != nil {
+		return response.Resp(c, response.Response{Code: fiber.StatusNotFound, Messages: response.Messages{err.Error()}})
+	}
+
+	return response.Resp(c, response.Response{Code: fiber.StatusOK, Data: res, Messages: response.Messages{"Public persons retrieved"}})
 }
