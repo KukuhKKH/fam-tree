@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ${REGISTRY}/${GITHUB_REPOSITORY}/silsilah-backend:${IMAGE_TAG}
+    image: ${REGISTRY}/${REPO_LOWER}/silsilah-backend:${IMAGE_TAG}
     build:
       context: ../../backend
       dockerfile: ../.gitlab-ci/build/backend/Dockerfile
@@ -9,7 +9,7 @@ services:
         IMAGE_NAMESPACE: ${IMAGE_NAMESPACE}
 
   frontend:
-    image: ${REGISTRY}/${GITHUB_REPOSITORY}/silsilah-frontend:${IMAGE_TAG}
+    image: ${REGISTRY}/${REPO_LOWER}/silsilah-frontend:${IMAGE_TAG}
     build:
       context: ../../frontend
       dockerfile: ../.gitlab-ci/build/frontend/Dockerfile
