@@ -1,5 +1,6 @@
 import type { Handle } from '@sveltejs/kit';
-import { INTERNAL_BACKEND_URL } from '$env/static/private';
+import { env } from '$env/dynamic/private';
+const INTERNAL_BACKEND_URL = env.INTERNAL_BACKEND_URL;
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const sessionId = event.cookies.get('session_id');

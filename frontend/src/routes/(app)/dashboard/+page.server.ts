@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
-import { INTERNAL_BACKEND_URL } from '$env/static/private';
+import { env } from '$env/dynamic/private';
+const INTERNAL_BACKEND_URL = env.INTERNAL_BACKEND_URL;
 
 export const load: PageServerLoad = async ({ fetch, cookies }) => {
 	const sessionId = cookies.get('session_id');
