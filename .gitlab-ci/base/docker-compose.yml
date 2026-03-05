@@ -1,0 +1,12 @@
+services:
+  backend-base:
+    image: ${REGISTRY}/${IMAGE_NAMESPACE}/silsilah-backend-base:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+  frontend-base:
+    image: ${REGISTRY}/${IMAGE_NAMESPACE}/silsilah-frontend-base:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile

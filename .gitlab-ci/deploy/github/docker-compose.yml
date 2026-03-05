@@ -1,0 +1,57 @@
+services:
+  backend:
+    image: ${REGISTRY}/${GITHUB_REPOSITORY}/silsilah-backend:${IMAGE_TAG}
+    networks:
+      - traefik-public
+    environment:
+      - APP_ENV=production
+    configs:
+      - source: backend_config
+        target: /app/config/config.toml
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.${STACK_NAME}-api.rule=Host(`${API_DOMAIN}`)"
+        - "traefik.http.routers.${STACK_NAME}-api.entrypoints=websecure"
+        - "traefik.http.routers.${STACK_NAME}-api.tls.certresolver=myresolver"
+        - "traefik.http.services.${STACK_NAME}-api.loadbalancer.server.port=8080"
+    volumes:
+      - backend-storage:/app/storage
+
+  frontend:
+    image: ${REGISTRY}/${GITHUB_REPOSITORY}/silsilah-frontend:${IMAGE_TAG}
+    networks:
+      - traefik-public
+    environment:
+      - PUBLIC_BACKEND_URL=https://${API_DOMAIN}
+      - INTERNAL_BACKEND_URL=http://backend:8080
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.${STACK_NAME}-web.rule=Host(`${WEB_DOMAIN}`)"
+        - "traefik.http.routers.${STACK_NAME}-web.entrypoints=websecure"
+        - "traefik.http.routers.${STACK_NAME}-web.tls.certresolver=myresolver"
+        - "traefik.http.services.${STACK_NAME}-web.loadbalancer.server.port=3000"
+
+networks:
+  traefik-public:
+    external: true
+
+volumes:
+  backend-storage:
+
+configs:
+  backend_config:
+    external: true

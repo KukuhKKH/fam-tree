@@ -1,0 +1,104 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - "README.md"
+      - ".gitignore"
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: ${{ github.repository_owner }}
+  STACK_NAME: silsilah
+
+jobs:
+  check-base:
+    runs-on: ubuntu-latest
+    outputs:
+      base_changed: ${{ steps.filter.outputs.base }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            base:
+              - '.gitlab-ci/base/**'
+
+  build-base:
+    needs: check-base
+    if: needs.check-base.outputs.base_changed == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push Base Images
+        run: |
+          cd .gitlab-ci/base
+          docker compose build --push
+
+  build-app:
+    needs: build-base
+    if: always() && (needs.build-base.result == 'success' || needs.build-base.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set Environment Variables
+        run: |
+          echo "IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
+          echo "GITHUB_REPOSITORY=${{ github.repository }}" >> $GITHUB_ENV
+
+      - name: Build and push App Images
+        run: |
+          cd .gitlab-ci/build
+          docker compose build --push
+
+  deploy:
+    needs: build-app
+    runs-on: self-hosted
+    env:
+      API_DOMAIN: ${{ vars.API_DOMAIN }}
+      WEB_DOMAIN: ${{ vars.WEB_DOMAIN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Environment Variables
+        run: |
+          echo "IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
+          echo "GITHUB_REPOSITORY=${{ github.repository }}" >> $GITHUB_ENV
+
+      - name: Log in to the Container registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+
+      - name: Create or Update Backend Config
+        run: |
+          echo "${{ secrets.BACKEND_CONFIG_PROD }}" > backend_config.toml
+          docker config rm backend_config || true
+          docker config create backend_config backend_config.toml
+          rm backend_config.toml
+
+      - name: Deploy to Stack
+        run: |
+          cd .gitlab-ci/deploy/github
+          docker stack deploy -c docker-compose.yml ${{ env.STACK_NAME }} --with-registry-auth
