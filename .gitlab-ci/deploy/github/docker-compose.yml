@@ -6,7 +6,7 @@ services:
     environment:
       - APP_ENV=production
     configs:
-      - source: backend_config
+      - source: backend_config_${IMAGE_TAG}
         target: /app/config/config.toml
     deploy:
       replicas: 1
@@ -53,5 +53,5 @@ volumes:
   backend-storage:
 
 configs:
-  backend_config:
+  backend_config_${IMAGE_TAG}:
     external: true

@@ -103,8 +103,8 @@ jobs:
           CONFIG_CONTENT: ${{ secrets.BACKEND_CONFIG_PROD }}
         run: |
           echo "$CONFIG_CONTENT" > backend_config.toml
-          docker config rm backend_config || true
-          docker config create backend_config backend_config.toml
+          # Use versioned config to avoid "in use" error
+          docker config create backend_config_${IMAGE_TAG} backend_config.toml || true
           rm backend_config.toml
 
       - name: Deploy to Stack
