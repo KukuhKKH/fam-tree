@@ -3,6 +3,7 @@ services:
     image: ${REGISTRY}/${REPO_LOWER}/silsilah-backend:${IMAGE_TAG}
     networks:
       - traefik-public
+      - db-net
     environment:
       - APP_ENV=production
     configs:
@@ -47,6 +48,8 @@ services:
 
 networks:
   traefik-public:
+    external: true
+  db-net:
     external: true
 
 volumes:
