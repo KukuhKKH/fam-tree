@@ -25,6 +25,7 @@ type AuthController interface {
 func NewAuthController(authService service.AuthService, cfg *config.Config, sessStore *fsession.Store) AuthController {
 	tmpl := &fiber.Cookie{
 		Name:     cfg.Cookie.Name,
+		Domain:   cfg.Cookie.Domain,
 		HTTPOnly: cfg.Cookie.HTTPOnly,
 		Secure:   cfg.Cookie.Secure,
 		SameSite: cfg.Cookie.SameSite,

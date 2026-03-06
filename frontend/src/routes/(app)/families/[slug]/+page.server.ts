@@ -2,14 +2,16 @@ import type { PageServerLoad } from './$types';
 import { apiFetch } from '$lib/api';
 import { error } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async ({ params, fetch }) => {
+export const load: PageServerLoad = async ({ params, fetch, cookies }) => {
     const { slug } = params;
+    const sessionId = cookies.get('session_id');
+    const cookieString = sessionId ? `session_id=${sessionId}` : '';
 
     try {
         const [family, members, persons] = await Promise.all([
-            apiFetch(`/families/${slug}`, { fetch }),
-            apiFetch(`/families/${slug}/members`, { fetch }),
-            apiFetch(`/families/${slug}/persons`, { fetch })
+            apiFetch(`/families/${slug}`, { fetch, cookie: cookieString }),
+            apiFetch(`/families/${slug}/members`, { fetch, cookie: cookieString }),
+            apiFetch(`/families/${slug}/persons`, { fetch, cookie: cookieString })
         ]);
 
         return {

@@ -3,6 +3,7 @@ import { env } from '$env/dynamic/public';
 interface FetchOptions extends RequestInit {
 	params?: Record<string, string>;
 	fetch?: typeof fetch;
+	cookie?: string;
 }
 
 export async function apiFetch<T = any>(path: string, options: FetchOptions = {}): Promise<T> {
@@ -18,12 +19,18 @@ export async function apiFetch<T = any>(path: string, options: FetchOptions = {}
 	// Use provided fetch (e.g. from SvelteKit load) or global fetch
 	const fetchFn = options.fetch || fetch;
 
+	const headers = new Headers(options.headers as HeadersInit);
+	if (!headers.has('Content-Type')) {
+		headers.set('Content-Type', 'application/json');
+	}
+
+	if (options.cookie) {
+		headers.set('Cookie', options.cookie);
+	}
+
 	const response = await fetchFn(url, {
 		...options,
-		headers: {
-			'Content-Type': 'application/json',
-			...options.headers,
-		},
+		headers: headers,
 		credentials: 'include',
 	});
 
