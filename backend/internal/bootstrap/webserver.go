@@ -40,6 +40,7 @@ func NewFiber(cfg *config.Config) *fiber.App {
 		BodyLimit:             bodyLimit,
 		DisableStartupMessage: true,
 		StreamRequestBody:     true,
+		ProxyHeader:           "X-Forwarded-For",
 	})
 
 	// pass production config to check it

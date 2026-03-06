@@ -58,6 +58,7 @@ func NewStore(cfg *config.Config) *session.Store {
 		CookieHTTPOnly: cfg.Cookie.HTTPOnly,
 		CookieSecure:   cfg.Cookie.Secure,
 		CookieSameSite: cfg.Cookie.SameSite,
+		CookieDomain:   cfg.Cookie.Domain,
 		CookiePath:     "/",
 		Expiration:     expiration,
 		Storage:        storage,

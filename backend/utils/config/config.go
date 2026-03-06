@@ -110,6 +110,7 @@ type middleware = struct {
 
 type cookie struct {
 	Name     string `toml:"name"`
+	Domain   string `toml:"domain"`
 	HTTPOnly bool   `toml:"http_only"`
 	Secure   bool   `toml:"secure"`
 	SameSite string `toml:"same_site"`
