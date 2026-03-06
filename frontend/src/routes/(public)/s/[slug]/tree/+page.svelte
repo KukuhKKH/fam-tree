@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { page } from "$app/state";
   import { Button } from "$lib/components/ui/button/index.js";
   import {
     ChevronLeft,
@@ -27,11 +28,37 @@
 </script>
 
 <svelte:head>
-  <title>Pohon Silsilah {family.name} — Publik | Silsilah</title>
+  <title>Pohon Silsilah {family?.name || ""} — Publik | Silsilah</title>
   <meta
     name="description"
-    content={`Lihat pohon silsilah keluarga ${family.name} secara publik.`}
+    content={`Visualisasi pohon silsilah keluarga ${family?.name || ""}. Telusuri hubungan antar anggota keluarga secara interaktif.`}
   />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content={page.url.href} />
+  <meta
+    property="og:title"
+    content={`Pohon Silsilah ${family?.name || ""} — Publik | Silsilah`}
+  />
+  <meta
+    property="og:description"
+    content={`Visualisasi interaktif pohon silsilah keluarga ${family?.name || ""}.`}
+  />
+  <meta property="og:image" content="/og-image.png" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content={page.url.href} />
+  <meta
+    property="twitter:title"
+    content={`Pohon Silsilah ${family?.name || ""} — Publik | Silsilah`}
+  />
+  <meta
+    property="twitter:description"
+    content={`Visualisasi interaktif pohon silsilah keluarga ${family?.name || ""}.`}
+  />
+  <meta property="twitter:image" content="/og-image.png" />
 </svelte:head>
 
 <div class="h-[calc(100vh-8rem)] flex flex-col max-w-[100vw] overflow-hidden">

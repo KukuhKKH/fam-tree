@@ -63,12 +63,40 @@
 </script>
 
 <svelte:head>
-  <title>{family.name} — Silsilah Publik</title>
+  <title>Keluarga {family?.name || ""} — Silsilah Publik</title>
   <meta
     name="description"
-    content={family.description ||
-      `Lihat silsilah keluarga ${family.name} secara publik.`}
+    content={family?.description ||
+      `Lihat silsilah keluarga ${family?.name || ""} secara publik. Temukan leluhur, kerabat, dan sejarah keluarga Anda.`}
   />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content={page.url.href} />
+  <meta
+    property="og:title"
+    content={`Keluarga ${family?.name || ""} — Silsilah Publik`}
+  />
+  <meta
+    property="og:description"
+    content={family?.description ||
+      `Lihat silsilah keluarga ${family?.name || ""} secara publik di platform Silsilah.`}
+  />
+  <meta property="og:image" content="/og-image.png" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content={page.url.href} />
+  <meta
+    property="twitter:title"
+    content={`Keluarga ${family?.name || ""} — Silsilah Publik`}
+  />
+  <meta
+    property="twitter:description"
+    content={family?.description ||
+      `Lihat silsilah keluarga ${family?.name || ""} secara publik di platform Silsilah.`}
+  />
+  <meta property="twitter:image" content="/og-image.png" />
 </svelte:head>
 
 <div class="max-w-7xl mx-auto px-6 py-12 space-y-10">
