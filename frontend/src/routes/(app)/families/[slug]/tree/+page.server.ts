@@ -8,18 +8,18 @@ export const load: PageServerLoad = async ({ params, fetch, cookies }) => {
     const cookieString = sessionId ? `session_id=${sessionId}` : '';
 
     try {
-        const [family, treeData] = await Promise.all([
-            apiFetch(`/families/${slug}`, { fetch, cookie: cookieString }),
-            apiFetch(`/families/${slug}/tree`, { fetch, cookie: cookieString })
-        ]);
+        const family = await apiFetch(`/families/${slug}`, { fetch, cookie: cookieString });
+        const treeDataPromise = apiFetch(`/families/${slug}/tree`, { fetch, cookie: cookieString });
 
         return {
             family,
-            treeData,
+            streamed: {
+                treeData: treeDataPromise
+            },
             slug
         };
     } catch (err: any) {
         console.error(`Error loading tree for family [${slug}]:`, err.message);
-        throw error(404, 'Data pohon silsilah tidak ditemukan');
+        throw error(404, 'Data keluarga tidak ditemukan');
     }
 };

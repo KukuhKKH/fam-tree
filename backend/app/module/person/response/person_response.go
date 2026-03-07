@@ -31,6 +31,8 @@ type RelationshipResponse struct {
 	PersonAID        uint64          `json:"person_a_id"`
 	PersonBID        uint64          `json:"person_b_id"`
 	RelationshipType string          `json:"relationship_type"`
+	MarriageDate     *time.Time      `json:"marriage_date,omitempty"`
+	DivorceDate      *time.Time      `json:"divorce_date,omitempty"`
 	Metadata         json.RawMessage `json:"metadata"`
 	CreatedAt        time.Time       `json:"created_at"`
 }
@@ -53,9 +55,12 @@ type TreeNode struct {
 
 // TreeEdge is a relationship edge for frontend visualization
 type TreeEdge struct {
+	ID               uint64          `json:"id"`
 	From             uint64          `json:"from"`
 	To               uint64          `json:"to"`
 	RelationshipType string          `json:"relationship_type"`
+	MarriageDate     *time.Time      `json:"marriage_date,omitempty"`
+	DivorceDate      *time.Time      `json:"divorce_date,omitempty"`
 	Metadata         json.RawMessage `json:"metadata"`
 }
 
@@ -98,7 +103,7 @@ func FromPersonSchema(p *schema.Person) PersonResponse {
 }
 
 func FromRelationshipSchema(r *schema.Relationship) RelationshipResponse {
-	return RelationshipResponse{
+	resp := RelationshipResponse{
 		ID:               r.ID,
 		FamilyID:         r.FamilyID,
 		PersonAID:        r.PersonAID,
@@ -107,4 +112,13 @@ func FromRelationshipSchema(r *schema.Relationship) RelationshipResponse {
 		Metadata:         r.Metadata,
 		CreatedAt:        r.CreatedAt,
 	}
+
+	if r.MarriageDate.Valid {
+		resp.MarriageDate = &r.MarriageDate.Time
+	}
+	if r.DivorceDate.Valid {
+		resp.DivorceDate = &r.DivorceDate.Time
+	}
+
+	return resp
 }

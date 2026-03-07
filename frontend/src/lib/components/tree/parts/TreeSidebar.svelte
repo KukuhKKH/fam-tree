@@ -10,6 +10,7 @@
   import { Badge } from "$lib/components/ui/badge/index.js";
   import { goto } from "$app/navigation";
   import EditPersonDialog from "$lib/components/persons/EditPersonDialog.svelte";
+  import ManageRelationshipsDialog from "$lib/components/relationships/ManageRelationshipsDialog.svelte";
 
   let {
     selectedPersonId = $bindable(),
@@ -291,6 +292,11 @@
               <ChevronRight size={18} />
             </Button>
 
+            <ManageRelationshipsDialog
+              person={selectedPerson}
+              {familySlug}
+              {relatives}
+            />
             <EditPersonDialog person={selectedPerson} {familySlug} />
           </div>
         {/if}

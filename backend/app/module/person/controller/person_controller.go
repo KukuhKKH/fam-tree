@@ -19,6 +19,7 @@ type PersonController interface {
 
 	CreateRelationship(c *fiber.Ctx) error
 	ListRelationships(c *fiber.Ctx) error
+	UpdateRelationship(c *fiber.Ctx) error
 	DeleteRelationship(c *fiber.Ctx) error
 
 	GetTree(c *fiber.Ctx) error
@@ -138,6 +139,25 @@ func (ctrl *personController) ListRelationships(c *fiber.Ctx) error {
 	}
 
 	return response.Resp(c, response.Response{Code: fiber.StatusOK, Data: res, Messages: response.Messages{"Relationships retrieved"}})
+}
+
+func (ctrl *personController) UpdateRelationship(c *fiber.Ctx) error {
+	var req request.UpdateRelationshipRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.Resp(c, response.Response{Code: fiber.StatusBadRequest, Messages: response.Messages{err.Error()}})
+	}
+
+	relID, err := strconv.ParseUint(c.Params("rel_id"), 10, 64)
+	if err != nil {
+		return response.Resp(c, response.Response{Code: fiber.StatusBadRequest, Messages: response.Messages{"Invalid relationship ID"}})
+	}
+
+	res, err := ctrl.svc.UpdateRelationship(c.Params("slug"), middleware.GetUserID(c), relID, req)
+	if err != nil {
+		return response.Resp(c, response.Response{Code: fiber.StatusUnprocessableEntity, Messages: response.Messages{err.Error()}})
+	}
+
+	return response.Resp(c, response.Response{Code: fiber.StatusOK, Data: res, Messages: response.Messages{"Relationship updated"}})
 }
 
 func (ctrl *personController) DeleteRelationship(c *fiber.Ctx) error {

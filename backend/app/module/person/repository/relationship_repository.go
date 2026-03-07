@@ -12,6 +12,7 @@ type RelationshipRepository interface {
 	ListByPersonID(personID, familyID uint64) ([]schema.Relationship, error)
 	Delete(id, familyID uint64) error
 	ExistsDuplicate(familyID, personAID, personBID uint64, relType string) bool
+	Update(rel *schema.Relationship) error
 }
 
 type relationshipRepository struct {
@@ -91,4 +92,8 @@ func (r *relationshipRepository) ExistsDuplicate(familyID, personAID, personBID 
 	}
 
 	return count > 0
+}
+
+func (r *relationshipRepository) Update(rel *schema.Relationship) error {
+	return r.DB.DB.Save(rel).Error
 }

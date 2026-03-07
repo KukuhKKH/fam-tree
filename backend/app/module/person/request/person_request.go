@@ -36,3 +36,9 @@ type CreateRelationshipRequest struct {
 	RelationshipType string          `json:"relationship_type"  validate:"required,oneof=parent_child spouse sibling"`
 	Metadata         json.RawMessage `json:"metadata"` // optional, e.g. {"marriage_date":"2020-01-01"}
 }
+
+type UpdateRelationshipRequest struct {
+	MarriageDate string          `json:"marriage_date"`
+	DivorceDate  string          `json:"divorce_date"`
+	Metadata     json.RawMessage `json:"metadata"`
+}

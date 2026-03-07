@@ -7,21 +7,21 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
     const { slug } = params;
 
     try {
-        const [familyRes, treeRes] = await Promise.all([
-            fetch(`${INTERNAL_BACKEND_URL}/public/families/${slug}`),
-            fetch(`${INTERNAL_BACKEND_URL}/public/families/${slug}/tree`)
-        ]);
-
+        const familyRes = await fetch(`${INTERNAL_BACKEND_URL}/public/families/${slug}`);
         if (!familyRes.ok) {
             throw error(404, 'Keluarga tidak ditemukan atau bersifat privat.');
         }
 
         const familyData = await familyRes.json();
-        const treeData = treeRes.ok ? await treeRes.json() : { data: { nodes: [], edges: [], root_id: 0 } };
+        const treeDataPromise = fetch(`${INTERNAL_BACKEND_URL}/public/families/${slug}/tree`)
+            .then(res => res.ok ? res.json() : { data: { nodes: [], edges: [], root_id: 0 } })
+            .then(json => json.data || { nodes: [], edges: [], root_id: 0 });
 
         return {
             family: familyData.data,
-            treeData: treeData.data || { nodes: [], edges: [], root_id: 0 },
+            streamed: {
+                treeData: treeDataPromise
+            },
             slug
         };
     } catch (err: any) {

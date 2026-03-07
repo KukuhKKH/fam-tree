@@ -130,6 +130,9 @@
       spousePairs.add(key);
     }
 
+    const divorceDates = new Map<string, string>();
+    const edgeIdMap = new Map<string, number>();
+
     edges.forEach((e: any) => {
       const type = normalizeType(e.relationship_type || "");
 
@@ -138,6 +141,11 @@
         addMapArray(parentsOf, e.to, e.from);
       } else if (type === "spouse") {
         addSpouse(e.from, e.to);
+        const key = e.from < e.to ? `${e.from}-${e.to}` : `${e.to}-${e.from}`;
+        edgeIdMap.set(key, e.id);
+        if (e.divorce_date) {
+          divorceDates.set(key, e.divorce_date);
+        }
       }
     });
 
@@ -525,13 +533,35 @@
 
     familyUnits.forEach((f) => {
       if (f.parents.length >= 2) {
+        const p1 = f.parents[0];
+        const p2 = f.parents[1];
+        const key = p1 < p2 ? `${p1}-${p2}` : `${p2}-${p1}`;
+        const divorceDate = divorceDates.get(key);
+        const isDivorced = !!divorceDate;
+        const relId = edgeIdMap.get(key);
+
         visEdges.push({
-          from: f.parents[0],
-          to: f.parents[1],
-          dashes: true,
-          width: 3,
-          color: { color: "#fbbf24", highlight: "#fbbf24" },
+          id: relId ? `edge-${relId}` : undefined,
+          from: p1,
+          to: p2,
+          dashes: isDivorced ? [12, 8] : true,
+          width: isDivorced ? 2.5 : 3.5,
+          color: {
+            color: isDivorced ? "#cbd5e1" : "#fbbf24",
+            highlight: isDivorced ? "#94a3b8" : "#f59e0b",
+          },
           smooth: false,
+          label: isDivorced ? "Cerai" : "",
+          font: {
+            size: 10,
+            align: "top",
+            color: "#94a3b8",
+            bold: true,
+            face: "Inter",
+          },
+          title: isDivorced
+            ? `Bercerai pada: ${new Date(divorceDate).getFullYear()}`
+            : "Pasangan Suami Istri",
         });
       }
 

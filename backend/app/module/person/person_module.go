@@ -65,6 +65,7 @@ func (r *PersonRouter) RegisterPersonRoutes() {
 	rels := families.Group("/relationships")
 	rels.Get("/", personCtrl.ListRelationships)
 	rels.Post("/", personCtrl.CreateRelationship)
+	rels.Patch("/:rel_id", personCtrl.UpdateRelationship)
 	rels.Delete("/:rel_id", personCtrl.DeleteRelationship)
 
 	// Full tree

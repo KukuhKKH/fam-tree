@@ -21,6 +21,7 @@ type PersonService interface {
 
 	CreateRelationship(familySlug string, userID uint64, req request.CreateRelationshipRequest) (response.RelationshipResponse, error)
 	ListRelationships(familySlug string, userID uint64) ([]response.RelationshipResponse, error)
+	UpdateRelationship(familySlug string, userID uint64, relID uint64, req request.UpdateRelationshipRequest) (response.RelationshipResponse, error)
 	DeleteRelationship(familySlug string, userID uint64, relID uint64) error
 
 	GetTree(familySlug string, userID uint64) (response.TreeResponse, error)
@@ -287,25 +288,28 @@ func (s *personService) CreateRelationship(familySlug string, userID uint64, req
 		return response.RelationshipResponse{}, err
 	}
 
-	// Auto-create parent_child for spouse:
-	// If we just created parent_child(A→child), find if A has a spouse B,
-	// then auto-create parent_child(B→child) if it doesn't already exist.
+	// Auto-create parent_child for spouse ONLY if there is exactly ONE spouse.
+	// If there are multiple spouses (remarriage/polygamy), the user must link
+	// the child to the specific second parent manually.
 	if req.RelationshipType == schema.RelationshipParentChild {
 		parentID := req.PersonAID
 		childID := req.PersonBID
 
 		rels, _ := s.relationshipRepo.ListByPersonID(parentID, family.ID)
+		var spouses []uint64
 		for _, r := range rels {
 			if r.RelationshipType != schema.RelationshipSpouse {
 				continue
 			}
-
 			spouseID := r.PersonBID
 			if r.PersonBID == parentID {
 				spouseID = r.PersonAID
 			}
+			spouses = append(spouses, spouseID)
+		}
 
-			// Auto-create if not duplicate
+		if len(spouses) == 1 {
+			spouseID := spouses[0]
 			if !s.relationshipRepo.ExistsDuplicate(family.ID, spouseID, childID, schema.RelationshipParentChild) {
 				spouseRel := &schema.Relationship{
 					FamilyID:         family.ID,
@@ -320,6 +324,40 @@ func (s *personService) CreateRelationship(familySlug string, userID uint64, req
 	}
 
 	return response.FromRelationshipSchema(created), nil
+}
+
+func (s *personService) UpdateRelationship(familySlug string, userID uint64, relID uint64, req request.UpdateRelationshipRequest) (response.RelationshipResponse, error) {
+	family, role, err := s.resolveFamilyAccess(familySlug, userID)
+	if err != nil {
+		return response.RelationshipResponse{}, err
+	}
+
+	if !canEdit(role) {
+		return response.RelationshipResponse{}, errors.New("insufficient permission")
+	}
+
+	rel, err := s.relationshipRepo.FindByID(relID, family.ID)
+	if err != nil {
+		return response.RelationshipResponse{}, errors.New("relationship not found")
+	}
+
+	if req.MarriageDate != "" {
+		rel.MarriageDate = parseDate(req.MarriageDate)
+	}
+
+	if req.DivorceDate != "" {
+		rel.DivorceDate = parseDate(req.DivorceDate)
+	}
+
+	if len(req.Metadata) > 0 {
+		rel.Metadata = req.Metadata
+	}
+
+	if err := s.relationshipRepo.Update(rel); err != nil {
+		return response.RelationshipResponse{}, err
+	}
+
+	return response.FromRelationshipSchema(rel), nil
 }
 
 func (s *personService) ListRelationships(familySlug string, userID uint64) ([]response.RelationshipResponse, error) {
@@ -415,12 +453,22 @@ func (s *personService) buildTree(family *schema.Family) (response.TreeResponse,
 
 	edges := make([]response.TreeEdge, 0, len(rels))
 	for _, r := range rels {
-		edges = append(edges, response.TreeEdge{
+		edge := response.TreeEdge{
+			ID:               r.ID,
 			From:             r.PersonAID,
 			To:               r.PersonBID,
 			RelationshipType: r.RelationshipType,
 			Metadata:         r.Metadata,
-		})
+		}
+
+		if r.MarriageDate.Valid {
+			edge.MarriageDate = &r.MarriageDate.Time
+		}
+		if r.DivorceDate.Valid {
+			edge.DivorceDate = &r.DivorceDate.Time
+		}
+
+		edges = append(edges, edge)
 	}
 
 	// Calculate the Root Node (Patriarch/Matriarch)

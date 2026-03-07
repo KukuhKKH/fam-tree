@@ -1,18 +1,12 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { Button } from "$lib/components/ui/button/index.js";
-  import {
-    ChevronLeft,
-    Share2,
-    TreeDeciduous,
-    Eye,
-    Globe,
-  } from "lucide-svelte";
+  import { ChevronLeft, Share2, Eye, Loader2, XCircle } from "lucide-svelte";
   import Network from "$lib/components/tree/Network.svelte";
+  import TreeSkeleton from "$lib/components/tree/parts/TreeSkeleton.svelte";
   import { toast } from "svelte-sonner";
 
   const { data } = $props();
-  const treeData = $derived(data.treeData);
   const family = $derived(data.family);
   const slug = $derived(data.slug);
 
@@ -111,7 +105,33 @@
     <div
       class="h-full rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800"
     >
-      <Network {treeData} familySlug={slug} readOnly={true} />
+      {#await data.streamed.treeData}
+        <TreeSkeleton />
+      {:then resolvedTreeData}
+        <Network
+          treeData={resolvedTreeData}
+          familySlug={slug}
+          readOnly={true}
+        />
+      {:catch error}
+        <div
+          class="w-full h-full flex flex-col items-center justify-center space-y-4 bg-rose-50 dark:bg-rose-950/10 rounded-[2rem]"
+        >
+          <div
+            class="p-4 rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-600"
+          >
+            <XCircle size={32} />
+          </div>
+          <p
+            class="font-bold text-rose-800 dark:text-rose-200 text-center px-4"
+          >
+            Gagal memuat silsilah publik:<br />{error.message}
+          </p>
+          <Button variant="outline" onclick={() => window.location.reload()}
+            >Coba Lagi</Button
+          >
+        </div>
+      {/await}
     </div>
   </div>
 </div>
