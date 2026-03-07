@@ -86,6 +86,9 @@
       nickname?: string;
       gender: string;
       photo_url?: string;
+      is_alive: boolean;
+      birth_date?: string;
+      death_date?: string;
     };
 
     type FamilyUnit = {
@@ -170,7 +173,14 @@
 
       let finalParents = rawParents;
 
-      if (rawParents.length > 2) {
+      if (rawParents.length === 1) {
+        const p1 = rawParents[0];
+        const spouses = spouseSet.get(p1);
+        if (spouses && spouses.size > 0) {
+          const s1 = [...spouses][0];
+          finalParents = [p1, s1].sort((a, b) => a - b);
+        }
+      } else if (rawParents.length > 2) {
         finalParents = rawParents.slice(0, 2);
       }
 
@@ -201,12 +211,12 @@
       }
     });
 
-    const personOwnFamily = new Map<number, string>();
+    const personParentFamilies = new Map<number, string[]>();
     familyUnits.forEach((f) => {
       f.parents.forEach((p) => {
-        if (!personOwnFamily.has(p)) {
-          personOwnFamily.set(p, f.id);
-        }
+        if (!personParentFamilies.has(p)) personParentFamilies.set(p, []);
+        const arr = personParentFamilies.get(p)!;
+        if (!arr.includes(f.id)) arr.push(f.id);
       });
     });
 
@@ -272,18 +282,18 @@
 
     familyUnits.forEach((f) => {
       f.children.forEach((childId) => {
-        const childOwnFamilyId = personOwnFamily.get(childId);
-        if (childOwnFamilyId) {
-          addFamilyEdge(f.id, childOwnFamilyId);
-        }
+        const ownFamilyIds = personParentFamilies.get(childId) || [];
+        ownFamilyIds.forEach((ownId) => {
+          addFamilyEdge(f.id, ownId);
+        });
       });
     });
 
     const SPOUSE_GAP = 160;
     const NODE_WIDTH = 120;
-    const CHILD_SPACING = 50;
-    const LEVEL_HEIGHT = 240;
-    const FAMILY_NODE_OFFSET_Y = 70;
+    const CHILD_SPACING = 80;
+    const LEVEL_HEIGHT = 320;
+    const FAMILY_NODE_OFFSET_Y = 120;
 
     const subtreeWidth = new Map<string, number>();
 
@@ -292,15 +302,21 @@
     }
 
     function getChildBlockWidth(childId: number): number {
-      const ownFamilyId = personOwnFamily.get(childId);
-      if (ownFamilyId) return getSubtreeWidth(ownFamilyId);
+      const ownFamilyIds = personParentFamilies.get(childId) || [];
+      if (ownFamilyIds.length > 0) {
+        let total = 0;
+        ownFamilyIds.forEach((fid) => (total += getSubtreeWidth(fid)));
+        total += (ownFamilyIds.length - 1) * CHILD_SPACING;
+        return total;
+      }
       return NODE_WIDTH;
     }
 
     function getSubtreeWidth(familyId: string): number {
       if (subtreeWidth.has(familyId)) return subtreeWidth.get(familyId)!;
 
-      const f = familyUnits.get(familyId)!;
+      const f = familyUnits.get(familyId);
+      if (!f) return 0;
       const ownWidth = getFamilySelfWidth(f);
 
       if (f.children.length === 0) {
@@ -335,26 +351,19 @@
       const childY = parentY + LEVEL_HEIGHT;
       const centerX = xStart + width / 2;
 
+      // Position parents
       if (f.parents.length >= 2) {
-        positions[f.parents[0]] = {
-          x: centerX - SPOUSE_GAP / 2,
-          y: parentY,
-        };
-        positions[f.parents[1]] = {
-          x: centerX + SPOUSE_GAP / 2,
-          y: parentY,
-        };
+        positions[f.parents[0]] = { x: centerX - SPOUSE_GAP / 2, y: parentY };
+        positions[f.parents[1]] = { x: centerX + SPOUSE_GAP / 2, y: parentY };
       } else {
-        positions[f.parents[0]] = {
-          x: centerX,
-          y: parentY,
-        };
+        positions[f.parents[0]] = { x: centerX, y: parentY };
       }
 
       familyNodePositions[familyId] = { x: centerX, y: familyY };
 
       if (f.children.length === 0) return;
 
+      // Position children
       let totalChildrenWidth = 0;
       f.children.forEach((childId) => {
         totalChildrenWidth += getChildBlockWidth(childId);
@@ -364,28 +373,28 @@
       let childX = centerX - totalChildrenWidth / 2;
 
       f.children.forEach((childId) => {
-        const ownFamilyId = personOwnFamily.get(childId);
+        const ownFamilyIds = personParentFamilies.get(childId) || [];
         const blockWidth = getChildBlockWidth(childId);
 
-        if (ownFamilyId) {
-          positionFamily(ownFamilyId, childX);
+        if (ownFamilyIds.length > 0) {
+          let currX = childX;
+          ownFamilyIds.forEach((fid) => {
+            positionFamily(fid, currX);
+            currX += getSubtreeWidth(fid) + CHILD_SPACING;
+          });
 
+          // Position the child person relative to their families
           if (!positions[childId]) {
-            const ownFamily = familyUnits.get(ownFamilyId)!;
-            const ownCenterX = childX + getSubtreeWidth(ownFamilyId) / 2;
-
+            const firstFam = familyUnits.get(ownFamilyIds[0])!;
+            const famCenterX = childX + getSubtreeWidth(ownFamilyIds[0]) / 2;
             positions[childId] =
-              ownFamily.parents.length >= 2
-                ? { x: ownCenterX - SPOUSE_GAP / 2, y: childY }
-                : { x: ownCenterX, y: childY };
+              firstFam.parents.length >= 2
+                ? { x: famCenterX - SPOUSE_GAP / 2, y: childY }
+                : { x: famCenterX, y: childY };
           }
         } else {
-          positions[childId] = {
-            x: childX + blockWidth / 2,
-            y: childY,
-          };
+          positions[childId] = { x: childX + blockWidth / 2, y: childY };
         }
-
         childX += blockWidth + CHILD_SPACING;
       });
     }
@@ -397,7 +406,7 @@
     let currentX = 0;
     rootFamilies.forEach((f) => {
       positionFamily(f.id, currentX);
-      currentX += getSubtreeWidth(f.id) + CHILD_SPACING * 4;
+      currentX += getSubtreeWidth(f.id) + CHILD_SPACING * 10;
     });
 
     people.forEach((p) => {
@@ -410,38 +419,87 @@
       }
     });
 
-    const visNodes: any[] = people.map((n: PersonNode) => ({
-      id: n.id,
-      x: positions[n.id].x,
-      y: positions[n.id].y,
-      label: n.nickname || n.full_name.split(" ")[0],
-      title: `
-        <div class="px-3 py-2 space-y-1">
-          <div class="font-bold text-sm leading-tight text-zinc-900">${n.full_name}</div>
-          <div class="text-[10px] font-black uppercase tracking-wider text-zinc-500">${getGenderLabel(n.gender)}</div>
-        </div>
-      `,
-      shape: "circularImage",
-      image:
-        n.photo_url ||
-        `https://ui-avatars.com/api/?name=${encodeURIComponent(n.full_name)}&background=${n.gender === "male" ? "0ea5e9" : "f43f5e"}&color=fff&bold=true&size=128`,
-      borderWidth: n.photo_url ? 4 : 3,
-      size: 38,
-      color: {
-        border: n.gender === "male" ? "#0ea5e9" : "#f43f5e",
-        background: "#ffffff",
-        highlight: { border: "#fbbf24", background: "#ffffff" },
-      },
-      font: {
-        color: "#4b5563",
-        size: 14,
-        face: "Inter, sans-serif",
-        strokeWidth: 4,
-        strokeColor: "#ffffff",
-      },
-      fixed: true,
-      physics: false,
-    }));
+    const visNodes: any[] = people.map((n: PersonNode) => {
+      const isAlive = n.is_alive ?? true;
+      const themeColor = n.gender === "male" ? "#0ea5e9" : "#f43f5e";
+      const borderColor = isAlive ? themeColor : "#94a3b8";
+
+      const getYear = (dateStr?: string) => {
+        if (!dateStr) return "";
+        try {
+          return dateStr.split("-")[0];
+        } catch (e) {
+          return "";
+        }
+      };
+
+      const birthYear = getYear(n.birth_date);
+      const deathYear = !isAlive ? getYear(n.death_date) : "Sekarang";
+      const yearStr = birthYear ? `\n(${birthYear} - ${deathYear})` : "";
+
+      return {
+        id: n.id,
+        x: positions[n.id].x,
+        y: positions[n.id].y,
+        label:
+          (n.nickname || n.full_name.split(" ")[0]) + (yearStr ? yearStr : ""),
+        title: `
+          <div class="px-3 py-3 space-y-2 min-w-[160px] bg-white dark:bg-zinc-900">
+            <div class="font-black text-sm tracking-tight text-zinc-900 dark:text-white leading-tight">${n.full_name}</div>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${n.gender === "male" ? "bg-blue-50 text-blue-600" : "bg-rose-50 text-rose-600"}">
+                ${getGenderLabel(n.gender)}
+              </span>
+              ${
+                !isAlive
+                  ? `
+                <span class="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
+                  Wafat ${deathYear ? `(${deathYear})` : ""}
+                </span>
+              `
+                  : `
+                <span class="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600">
+                  Hidup
+                </span>
+              `
+              }
+            </div>
+            ${
+              birthYear
+                ? `
+              <div class="text-[10px] font-bold text-zinc-400 mt-1">
+                ${birthYear} — ${isAlive ? "Sekarang" : deathYear || "?"}
+              </div>
+            `
+                : ""
+            }
+          </div>
+        `,
+        shape: "circularImage",
+        image:
+          n.photo_url ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(n.full_name)}&background=${(isAlive ? themeColor : "#cbd5e1").replace("#", "")}&color=fff&bold=true&size=128`,
+        borderWidth: isAlive ? (n.photo_url ? 6 : 4) : 4,
+        size: 45,
+        opacity: isAlive ? 1 : 0.8,
+        color: {
+          border: borderColor,
+          background: "#ffffff",
+          highlight: { border: "#fbbf24", background: "#ffffff" },
+        },
+        font: {
+          color: isAlive ? "#09090b" : "#71717a",
+          size: isAlive ? 15 : 13,
+          face: "Inter, sans-serif",
+          strokeWidth: 5,
+          strokeColor: "#ffffff",
+          multi: true,
+          bold: true,
+        },
+        fixed: true,
+        physics: false,
+      };
+    });
 
     Object.entries(familyNodePositions).forEach(([fid, pos]) => {
       visNodes.push({
@@ -488,7 +546,7 @@
             enabled: true,
             type: "cubicBezier",
             forceDirection: "vertical",
-            roundness: 0,
+            roundness: 0.5,
           },
         });
       });
@@ -504,7 +562,7 @@
             enabled: true,
             type: "cubicBezier",
             forceDirection: "vertical",
-            roundness: 0,
+            roundness: 0.5,
           },
         });
       });
@@ -524,7 +582,7 @@
           enabled: true,
           type: "cubicBezier",
           forceDirection: "vertical",
-          roundness: 0,
+          roundness: 0.5,
         },
       },
       layout: {
