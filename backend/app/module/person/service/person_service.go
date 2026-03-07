@@ -301,10 +301,12 @@ func (s *personService) CreateRelationship(familySlug string, userID uint64, req
 			if r.RelationshipType != schema.RelationshipSpouse {
 				continue
 			}
+
 			spouseID := r.PersonBID
 			if r.PersonBID == parentID {
 				spouseID = r.PersonAID
 			}
+
 			spouses = append(spouses, spouseID)
 		}
 
@@ -464,6 +466,7 @@ func (s *personService) buildTree(family *schema.Family) (response.TreeResponse,
 		if r.MarriageDate.Valid {
 			edge.MarriageDate = &r.MarriageDate.Time
 		}
+
 		if r.DivorceDate.Valid {
 			edge.DivorceDate = &r.DivorceDate.Time
 		}
