@@ -14,9 +14,9 @@
   let searchQuery = $state("");
   let showLegend = $state(false);
 
-  // Status indicators for formatting
   const getGenderColor = (gender: string) =>
     gender === "male" ? "blue" : "rose";
+
   const getGenderLabel = (gender: string) =>
     gender === "male" ? "Laki-laki" : "Perempuan";
 
@@ -39,25 +39,24 @@
               e.from === selectedPersonId || e.to === selectedPersonId,
           )
           .map((e: any) => {
+            const type = e.relationship_type?.replace("_", "-");
             const isFrom = e.from === selectedPersonId;
             const otherId = isFrom ? e.to : e.from;
             const otherPerson = treeData.nodes.find(
               (n: any) => n.id === otherId,
             );
+
             let label = "";
 
-            if (
-              e.relationship_type === "parent_child" ||
-              e.relationship_type === "parent-child"
-            ) {
+            if (type === "parent-child") {
               if (isFrom) {
                 label = "Anak";
               } else {
-                label = otherPerson.gender === "male" ? "Ayah" : "Ibu";
+                label = otherPerson?.gender === "male" ? "Ayah" : "Ibu";
               }
-            } else if (e.relationship_type === "spouse") {
-              label = otherPerson.gender === "male" ? "Suami" : "Istri";
-            } else if (e.relationship_type === "sibling") {
+            } else if (type === "spouse") {
+              label = otherPerson?.gender === "male" ? "Suami" : "Istri";
+            } else if (type === "sibling") {
               label = "Saudara";
             } else {
               label =
@@ -76,283 +75,460 @@
   onMount(() => {
     if (!container) return;
 
-    const parentChildEdges = treeData.edges.filter(
-      (e: any) =>
-        e.relationship_type === "parent_child" ||
-        e.relationship_type === "parent-child",
-    );
-    const spouseEdges = treeData.edges.filter(
-      (e: any) => e.relationship_type === "spouse",
-    );
+    network?.destroy();
+    network = null;
 
-    // Map: parentID -> [childIDs]
-    const childrenOf: Record<number, number[]> = {};
-    for (const e of parentChildEdges) {
-      if (!childrenOf[e.from]) childrenOf[e.from] = [];
-      childrenOf[e.from].push(e.to);
+    const normalizeType = (t: string) => t.replace("_", "-");
+
+    type PersonNode = {
+      id: number;
+      full_name: string;
+      nickname?: string;
+      gender: string;
+      photo_url?: string;
+    };
+
+    type FamilyUnit = {
+      id: string;
+      parents: number[];
+      children: number[];
+      level: number;
+    };
+
+    const people = treeData.nodes as PersonNode[];
+    const edges = treeData.edges as any[];
+
+    const personMap = new Map<number, PersonNode>();
+    people.forEach((p) => personMap.set(p.id, p));
+
+    const parentsOf = new Map<number, number[]>();
+    const childrenOf = new Map<number, number[]>();
+    const spouseSet = new Map<number, Set<number>>();
+    const spousePairs = new Set<string>();
+
+    function addMapArray(
+      map: Map<number, number[]>,
+      key: number,
+      value: number,
+    ) {
+      if (!map.has(key)) map.set(key, []);
+      const arr = map.get(key)!;
+      if (!arr.includes(value)) arr.push(value);
     }
 
-    // Map: personID -> spouseID (bidirectional)
-    const spouseOf: Record<number, number> = {};
-    for (const e of spouseEdges) {
-      spouseOf[e.from] = e.to;
-      spouseOf[e.to] = e.from;
+    function addSpouse(a: number, b: number) {
+      if (!spouseSet.has(a)) spouseSet.set(a, new Set());
+      if (!spouseSet.has(b)) spouseSet.set(b, new Set());
+
+      spouseSet.get(a)!.add(b);
+      spouseSet.get(b)!.add(a);
+
+      const key = a < b ? `${a}-${b}` : `${b}-${a}`;
+      spousePairs.add(key);
     }
 
-    // BFS from root to assign levels
-    const levels: Record<number, number> = {};
-    const rootID = treeData.root_id || treeData.nodes[0]?.id;
+    edges.forEach((e: any) => {
+      const type = normalizeType(e.relationship_type || "");
 
-    if (rootID) {
-      const queue: number[] = [rootID];
-      levels[rootID] = 0;
-
-      if (spouseOf[rootID] !== undefined) {
-        levels[spouseOf[rootID]] = 0;
-        queue.push(spouseOf[rootID]);
+      if (type === "parent-child") {
+        addMapArray(childrenOf, e.from, e.to);
+        addMapArray(parentsOf, e.to, e.from);
+      } else if (type === "spouse") {
+        addSpouse(e.from, e.to);
       }
-
-      const visited = new Set<number>(queue);
-
-      while (queue.length > 0) {
-        const current = queue.shift()!;
-        const currentLevel = levels[current];
-
-        const children = childrenOf[current] || [];
-        for (const childId of children) {
-          if (visited.has(childId)) continue;
-
-          levels[childId] = currentLevel + 1;
-          visited.add(childId);
-          queue.push(childId);
-
-          if (
-            spouseOf[childId] !== undefined &&
-            !visited.has(spouseOf[childId])
-          ) {
-            levels[spouseOf[childId]] = currentLevel + 1;
-            visited.add(spouseOf[childId]);
-            queue.push(spouseOf[childId]);
-          }
-        }
-      }
-
-      for (const n of treeData.nodes) {
-        if (levels[n.id] === undefined) {
-          levels[n.id] = 0;
-        }
-      }
-    }
-
-    // ─── Manual Position Calculation
-    const SPOUSE_GAP = 140; // tight gap between husband & wife
-    const FAMILY_GAP = 400; // wide gap between family units
-    const LEVEL_HEIGHT = 240; // vertical distance between generations
-
-    const positions: Record<number, { x: number; y: number }> = {};
-    const maxLevel = Math.max(...Object.values(levels), 0);
-
-    // Helper: find parent couple midpoint for a node
-    function getParentMidX(nodeId: number): number {
-      for (const e of parentChildEdges) {
-        if (e.to === nodeId) {
-          const px = positions[e.from];
-          if (px) {
-            const sid = spouseOf[e.from];
-            if (sid !== undefined && positions[sid]) {
-              return (px.x + positions[sid].x) / 2;
-            }
-            return px.x;
-          }
-        }
-      }
-      return 0;
-    }
-
-    for (let lv = 0; lv <= maxLevel; lv++) {
-      const nodesAtLevel = treeData.nodes
-        .filter((n: any) => levels[n.id] === lv)
-        .map((n: any) => n.id);
-
-      // Group nodes into couples and singles
-      const placed = new Set<number>();
-      const groups: number[][] = [];
-
-      for (const nodeId of nodesAtLevel) {
-        if (placed.has(nodeId)) continue;
-        placed.add(nodeId);
-
-        const sid = spouseOf[nodeId];
-        if (sid !== undefined && levels[sid] === lv && !placed.has(sid)) {
-          groups.push([nodeId, sid]);
-          placed.add(sid);
-        } else {
-          groups.push([nodeId]);
-        }
-      }
-
-      // Sort groups by parent position (children appear under parents)
-      if (lv > 0) {
-        groups.sort((a, b) => getParentMidX(a[0]) - getParentMidX(b[0]));
-      }
-
-      // Assign x positions
-      let currentX = 0;
-      for (const group of groups) {
-        if (group.length === 2) {
-          positions[group[0]] = {
-            x: currentX,
-            y: lv * LEVEL_HEIGHT,
-          };
-          positions[group[1]] = {
-            x: currentX + SPOUSE_GAP,
-            y: lv * LEVEL_HEIGHT,
-          };
-          currentX += SPOUSE_GAP + FAMILY_GAP;
-        } else {
-          positions[group[0]] = {
-            x: currentX,
-            y: lv * LEVEL_HEIGHT,
-          };
-          currentX += FAMILY_GAP;
-        }
-      }
-
-      // Center the row around x=0
-      const allX = nodesAtLevel.map((id: number) => positions[id]?.x ?? 0);
-      if (allX.length > 0) {
-        const midX = (Math.min(...allX) + Math.max(...allX)) / 2;
-        for (const id of nodesAtLevel) {
-          if (positions[id]) positions[id].x -= midX;
-        }
-      }
-    }
-
-    // Second pass: center child groups under parent couple midpoints
-    for (let lv = 1; lv <= maxLevel; lv++) {
-      const nodesAtLevel = treeData.nodes
-        .filter((n: any) => levels[n.id] === lv)
-        .map((n: any) => n.id);
-
-      // Group by parent couple
-      const parentGroups: Map<string, number[]> = new Map();
-      for (const nodeId of nodesAtLevel) {
-        const pmx = getParentMidX(nodeId);
-        const key = pmx.toFixed(0);
-        if (!parentGroups.has(key)) parentGroups.set(key, []);
-        parentGroups.get(key)!.push(nodeId);
-      }
-
-      for (const [keyStr, childIds] of parentGroups) {
-        const parentMidX = parseFloat(keyStr);
-        const childXs = childIds.map((id) => positions[id]?.x ?? 0);
-        const childMidX = (Math.min(...childXs) + Math.max(...childXs)) / 2;
-        const offset = parentMidX - childMidX;
-
-        for (const id of childIds) {
-          if (positions[id]) positions[id].x += offset;
-        }
-      }
-    }
-
-    // ─── Transform data for vis-network
-    const nodes = new DataSet(
-      treeData.nodes.map((n: any) => ({
-        id: n.id,
-        x: positions[n.id]?.x ?? 0,
-        y: positions[n.id]?.y ?? 0,
-        label: n.nickname || n.full_name.split(" ")[0],
-        title: `
-          <div class="px-3 py-2 space-y-1">
-            <div class="font-bold text-sm leading-tight text-zinc-900">${n.full_name}</div>
-            <div class="text-[10px] font-black uppercase tracking-wider text-zinc-500">${getGenderLabel(n.gender)}</div>
-          </div>
-        `,
-        shape: "circularImage",
-        image:
-          n.photo_url ||
-          `https://ui-avatars.com/api/?name=${encodeURIComponent(n.full_name)}&background=${n.gender === "male" ? "0ea5e9" : "f43f5e"}&color=fff&bold=true&size=128`,
-        borderWidth: 4,
-        size: 35,
-        color: {
-          border: n.gender === "male" ? "#0ea5e9" : "#f43f5e",
-          background: "#ffffff",
-          highlight: {
-            border: "#fbbf24",
-            background: "#ffffff",
-          },
-        },
-        font: {
-          color: "#4b5563",
-          size: 14,
-          face: "Inter, sans-serif",
-          base: "bold",
-          strokeWidth: 4,
-          strokeColor: "#ffffff",
-        },
-      })),
-    );
-
-    // Deduplicate parent_child edges
-    const seenChildEdges = new Set<number>();
-    const dedupedEdges = treeData.edges.filter((e: any) => {
-      const isParentChild =
-        e.relationship_type === "parent_child" ||
-        e.relationship_type === "parent-child";
-
-      if (isParentChild) {
-        if (seenChildEdges.has(e.to)) return false;
-        seenChildEdges.add(e.to);
-      }
-      return true;
     });
 
-    const edges = new DataSet(
-      dedupedEdges.map((e: any) => {
-        const type = e.relationship_type;
-        const isParentChild =
-          type === "parent_child" || type === "parent-child";
+    const familyUnits = new Map<string, FamilyUnit>();
+    const personParentFamily = new Map<number, string>();
 
-        return {
-          from: e.from,
-          to: e.to,
-          label: isParentChild ? "" : relationshipLabels[type] || type,
-          arrows: isParentChild ? "to" : "",
-          color: {
-            color: isParentChild ? "#94a3b8" : "#fbbf24",
-            highlight: "#fbbf24",
-          },
-          dashes: type === "spouse" ? true : false,
-          width: type === "spouse" ? 2.5 : 1.5,
-          font: {
-            size: 11,
-            face: "Inter, sans-serif",
-            color: "#d97706",
-            align: "top",
-            strokeWidth: 3,
-            strokeColor: "#ffffff",
-          },
-        };
+    function makeFamilyId(parents: number[]) {
+      return `family-${[...parents].sort((a, b) => a - b).join("-")}`;
+    }
+
+    function ensureFamily(parents: number[]) {
+      const sortedParents = [...parents].sort((a, b) => a - b);
+      const familyId = makeFamilyId(sortedParents);
+
+      if (!familyUnits.has(familyId)) {
+        familyUnits.set(familyId, {
+          id: familyId,
+          parents: sortedParents,
+          children: [],
+          level: 0,
+        });
+      }
+
+      return familyId;
+    }
+
+    people.forEach((child) => {
+      const rawParents = [...(parentsOf.get(child.id) || [])].sort(
+        (a, b) => a - b,
+      );
+
+      if (rawParents.length === 0) return;
+
+      let finalParents = rawParents;
+
+      if (rawParents.length > 2) {
+        finalParents = rawParents.slice(0, 2);
+      }
+
+      const familyId = ensureFamily(finalParents);
+      const fam = familyUnits.get(familyId)!;
+
+      if (!fam.children.includes(child.id)) {
+        fam.children.push(child.id);
+      }
+
+      personParentFamily.set(child.id, familyId);
+    });
+
+    spousePairs.forEach((pairKey) => {
+      const parents = pairKey.split("-").map(Number);
+      ensureFamily(parents);
+    });
+
+    const usedPeople = new Set<number>();
+    familyUnits.forEach((f) => {
+      f.parents.forEach((id) => usedPeople.add(id));
+      f.children.forEach((id) => usedPeople.add(id));
+    });
+
+    people.forEach((p) => {
+      if (!usedPeople.has(p.id)) {
+        ensureFamily([p.id]);
+      }
+    });
+
+    const personOwnFamily = new Map<number, string>();
+    familyUnits.forEach((f) => {
+      f.parents.forEach((p) => {
+        if (!personOwnFamily.has(p)) {
+          personOwnFamily.set(p, f.id);
+        }
+      });
+    });
+
+    const personLevel = new Map<number, number>();
+    const rootPeople = people
+      .filter((p) => !parentsOf.get(p.id)?.length)
+      .map((p) => p.id);
+
+    const queue: Array<{ personId: number; level: number }> = rootPeople.map(
+      (id) => ({
+        personId: id,
+        level: 0,
       }),
     );
 
-    const data = { nodes, edges };
+    while (queue.length > 0) {
+      const { personId, level } = queue.shift()!;
+      const current = personLevel.get(personId);
+
+      if (current !== undefined && current >= level) continue;
+
+      personLevel.set(personId, level);
+
+      const spouses = spouseSet.get(personId);
+      if (spouses) {
+        spouses.forEach((sid) => {
+          queue.push({ personId: sid, level });
+        });
+      }
+
+      const kids = childrenOf.get(personId) || [];
+      kids.forEach((cid) => {
+        queue.push({ personId: cid, level: level + 1 });
+      });
+    }
+
+    people.forEach((p) => {
+      if (!personLevel.has(p.id)) personLevel.set(p.id, 0);
+    });
+
+    familyUnits.forEach((f) => {
+      const lv = Math.max(...f.parents.map((p) => personLevel.get(p) ?? 0));
+      f.level = lv;
+    });
+
+    const familyChildren = new Map<string, string[]>();
+    const familyParents = new Map<string, string[]>();
+
+    function addFamilyEdge(parentFamilyId: string, childFamilyId: string) {
+      if (parentFamilyId === childFamilyId) return;
+
+      if (!familyChildren.has(parentFamilyId))
+        familyChildren.set(parentFamilyId, []);
+      if (!familyParents.has(childFamilyId))
+        familyParents.set(childFamilyId, []);
+
+      const fc = familyChildren.get(parentFamilyId)!;
+      const fp = familyParents.get(childFamilyId)!;
+
+      if (!fc.includes(childFamilyId)) fc.push(childFamilyId);
+      if (!fp.includes(parentFamilyId)) fp.push(parentFamilyId);
+    }
+
+    familyUnits.forEach((f) => {
+      f.children.forEach((childId) => {
+        const childOwnFamilyId = personOwnFamily.get(childId);
+        if (childOwnFamilyId) {
+          addFamilyEdge(f.id, childOwnFamilyId);
+        }
+      });
+    });
+
+    const SPOUSE_GAP = 160;
+    const NODE_WIDTH = 120;
+    const CHILD_SPACING = 50;
+    const LEVEL_HEIGHT = 240;
+    const FAMILY_NODE_OFFSET_Y = 70;
+
+    const subtreeWidth = new Map<string, number>();
+
+    function getFamilySelfWidth(f: FamilyUnit) {
+      return f.parents.length >= 2 ? SPOUSE_GAP + NODE_WIDTH : NODE_WIDTH;
+    }
+
+    function getChildBlockWidth(childId: number): number {
+      const ownFamilyId = personOwnFamily.get(childId);
+      if (ownFamilyId) return getSubtreeWidth(ownFamilyId);
+      return NODE_WIDTH;
+    }
+
+    function getSubtreeWidth(familyId: string): number {
+      if (subtreeWidth.has(familyId)) return subtreeWidth.get(familyId)!;
+
+      const f = familyUnits.get(familyId)!;
+      const ownWidth = getFamilySelfWidth(f);
+
+      if (f.children.length === 0) {
+        subtreeWidth.set(familyId, ownWidth);
+        return ownWidth;
+      }
+
+      let childrenWidth = 0;
+      f.children.forEach((childId) => {
+        childrenWidth += getChildBlockWidth(childId);
+      });
+      childrenWidth += (f.children.length - 1) * CHILD_SPACING;
+
+      const finalWidth = Math.max(ownWidth, childrenWidth);
+      subtreeWidth.set(familyId, finalWidth);
+      return finalWidth;
+    }
+
+    const positions: Record<number, { x: number; y: number }> = {};
+    const familyNodePositions: Record<string, { x: number; y: number }> = {};
+    const placedFamily = new Set<string>();
+
+    function positionFamily(familyId: string, xStart: number) {
+      if (placedFamily.has(familyId)) return;
+      placedFamily.add(familyId);
+
+      const f = familyUnits.get(familyId)!;
+      const width = getSubtreeWidth(familyId);
+
+      const parentY = f.level * LEVEL_HEIGHT;
+      const familyY = parentY + FAMILY_NODE_OFFSET_Y;
+      const childY = parentY + LEVEL_HEIGHT;
+      const centerX = xStart + width / 2;
+
+      if (f.parents.length >= 2) {
+        positions[f.parents[0]] = {
+          x: centerX - SPOUSE_GAP / 2,
+          y: parentY,
+        };
+        positions[f.parents[1]] = {
+          x: centerX + SPOUSE_GAP / 2,
+          y: parentY,
+        };
+      } else {
+        positions[f.parents[0]] = {
+          x: centerX,
+          y: parentY,
+        };
+      }
+
+      familyNodePositions[familyId] = { x: centerX, y: familyY };
+
+      if (f.children.length === 0) return;
+
+      let totalChildrenWidth = 0;
+      f.children.forEach((childId) => {
+        totalChildrenWidth += getChildBlockWidth(childId);
+      });
+      totalChildrenWidth += (f.children.length - 1) * CHILD_SPACING;
+
+      let childX = centerX - totalChildrenWidth / 2;
+
+      f.children.forEach((childId) => {
+        const ownFamilyId = personOwnFamily.get(childId);
+        const blockWidth = getChildBlockWidth(childId);
+
+        if (ownFamilyId) {
+          positionFamily(ownFamilyId, childX);
+
+          if (!positions[childId]) {
+            const ownFamily = familyUnits.get(ownFamilyId)!;
+            const ownCenterX = childX + getSubtreeWidth(ownFamilyId) / 2;
+
+            positions[childId] =
+              ownFamily.parents.length >= 2
+                ? { x: ownCenterX - SPOUSE_GAP / 2, y: childY }
+                : { x: ownCenterX, y: childY };
+          }
+        } else {
+          positions[childId] = {
+            x: childX + blockWidth / 2,
+            y: childY,
+          };
+        }
+
+        childX += blockWidth + CHILD_SPACING;
+      });
+    }
+
+    const rootFamilies = [...familyUnits.values()]
+      .filter((f) => !familyParents.get(f.id)?.length)
+      .sort((a, b) => a.level - b.level || a.parents[0] - b.parents[0]);
+
+    let currentX = 0;
+    rootFamilies.forEach((f) => {
+      positionFamily(f.id, currentX);
+      currentX += getSubtreeWidth(f.id) + CHILD_SPACING * 4;
+    });
+
+    people.forEach((p) => {
+      if (!positions[p.id]) {
+        positions[p.id] = {
+          x: currentX,
+          y: ((personLevel.get(p.id) ?? 0) + 2) * LEVEL_HEIGHT,
+        };
+        currentX += NODE_WIDTH + CHILD_SPACING;
+      }
+    });
+
+    const visNodes: any[] = people.map((n: PersonNode) => ({
+      id: n.id,
+      x: positions[n.id].x,
+      y: positions[n.id].y,
+      label: n.nickname || n.full_name.split(" ")[0],
+      title: `
+        <div class="px-3 py-2 space-y-1">
+          <div class="font-bold text-sm leading-tight text-zinc-900">${n.full_name}</div>
+          <div class="text-[10px] font-black uppercase tracking-wider text-zinc-500">${getGenderLabel(n.gender)}</div>
+        </div>
+      `,
+      shape: "circularImage",
+      image:
+        n.photo_url ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(n.full_name)}&background=${n.gender === "male" ? "0ea5e9" : "f43f5e"}&color=fff&bold=true&size=128`,
+      borderWidth: n.photo_url ? 4 : 3,
+      size: 38,
+      color: {
+        border: n.gender === "male" ? "#0ea5e9" : "#f43f5e",
+        background: "#ffffff",
+        highlight: { border: "#fbbf24", background: "#ffffff" },
+      },
+      font: {
+        color: "#4b5563",
+        size: 14,
+        face: "Inter, sans-serif",
+        strokeWidth: 4,
+        strokeColor: "#ffffff",
+      },
+      fixed: true,
+      physics: false,
+    }));
+
+    Object.entries(familyNodePositions).forEach(([fid, pos]) => {
+      visNodes.push({
+        id: fid,
+        x: pos.x,
+        y: pos.y,
+        size: 4,
+        shape: "dot",
+        color: {
+          background: "rgba(148,163,184,0.45)",
+          border: "rgba(148,163,184,0.45)",
+          highlight: "rgba(148,163,184,0.45)",
+          hover: "rgba(148,163,184,0.45)",
+        },
+        label: "",
+        physics: false,
+        fixed: true,
+        font: { size: 1, color: "rgba(0,0,0,0)" },
+      });
+    });
+
+    const visEdges: any[] = [];
+
+    familyUnits.forEach((f) => {
+      if (f.parents.length >= 2) {
+        visEdges.push({
+          from: f.parents[0],
+          to: f.parents[1],
+          dashes: true,
+          width: 3,
+          color: { color: "#fbbf24", highlight: "#fbbf24" },
+          smooth: false,
+        });
+      }
+
+      f.parents.forEach((parentId) => {
+        visEdges.push({
+          from: parentId,
+          to: f.id,
+          arrows: "",
+          width: 1.5,
+          color: { color: "#94a3b8", highlight: "#94a3b8" },
+          smooth: {
+            enabled: true,
+            type: "cubicBezier",
+            forceDirection: "vertical",
+            roundness: 0,
+          },
+        });
+      });
+
+      f.children.forEach((childId) => {
+        visEdges.push({
+          from: f.id,
+          to: childId,
+          arrows: "",
+          width: 1.5,
+          color: { color: "#94a3b8", highlight: "#94a3b8" },
+          smooth: {
+            enabled: true,
+            type: "cubicBezier",
+            forceDirection: "vertical",
+            roundness: 0,
+          },
+        });
+      });
+    });
+
+    const data = {
+      nodes: new DataSet(visNodes),
+      edges: new DataSet(visEdges),
+    };
 
     const options = {
       nodes: {
-        shapeProperties: {
-          useBorderWithImage: true,
-        },
+        shapeProperties: { useBorderWithImage: true },
       },
       edges: {
         smooth: {
+          enabled: true,
           type: "cubicBezier",
           forceDirection: "vertical",
-          roundness: 0.5,
+          roundness: 0,
         },
       },
       layout: {
-        // No hierarchical — we use manual x,y positions
+        improvedLayout: false,
       },
       physics: {
         enabled: false,
@@ -367,8 +543,15 @@
     network = new Network(container, data, options);
 
     network.on("selectNode", (params: any) => {
-      selectedPersonId = params.nodes[0];
-      network?.focus(params.nodes[0], {
+      const id = params.nodes[0];
+
+      if (typeof id === "string" && id.startsWith("family-")) {
+        network?.unselectAll();
+        return;
+      }
+
+      selectedPersonId = id;
+      network?.focus(id, {
         scale: 1.1,
         animation: {
           duration: 1000,
@@ -381,9 +564,8 @@
       selectedPersonId = null;
     });
 
-    // Initial Focus
     network.once("afterDrawing", () => {
-      if (treeData.root_id) {
+      if (treeData.root_id && positions[treeData.root_id]) {
         network?.focus(treeData.root_id, {
           scale: 0.9,
           animation: { duration: 1000, easingFunction: "easeInOutQuad" },
@@ -402,11 +584,13 @@
 
   function handleSearch() {
     if (!network || !searchQuery) return;
+
     const person = treeData.nodes.find(
       (n: any) =>
         n.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         n.nickname?.toLowerCase().includes(searchQuery.toLowerCase()),
     );
+
     if (person) {
       network.focus(person.id, {
         scale: 1.2,
@@ -427,10 +611,8 @@
 <div
   class="relative w-full h-[calc(100vh-12rem)] min-h-[450px] sm:min-h-[600px] rounded-[2rem] sm:rounded-[3.5rem] bg-zinc-50 dark:bg-zinc-950/20 border border-zinc-200 dark:border-zinc-800 shadow-inner overflow-hidden"
 >
-  <!-- The Graph Container -->
   <div bind:this={container} class="w-full h-full"></div>
 
-  <!-- Search & Controls Overlay -->
   <TreeControls
     bind:searchQuery
     bind:showLegend
@@ -438,10 +620,8 @@
     onReset={resetView}
   />
 
-  <!-- Legend Overlay -->
   <TreeLegend bind:showLegend />
 
-  <!-- Selection Info Sidebar -->
   <TreeSidebar
     bind:selectedPersonId
     {selectedPerson}
@@ -458,6 +638,7 @@
   :global(.vis-network) {
     outline: none;
   }
+
   :global(.vis-network:focus) {
     outline: none;
   }
