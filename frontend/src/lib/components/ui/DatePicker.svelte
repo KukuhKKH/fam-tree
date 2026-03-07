@@ -9,8 +9,8 @@
     type DateValue,
     getLocalTimeZone,
     parseDate,
-    today,
   } from "@internationalized/date";
+  import { onMount } from "svelte";
 
   let {
     value = $bindable(""),
@@ -22,10 +22,14 @@
     dateStyle: "long",
   });
 
+  let mounted = $state(false);
+  onMount(() => {
+    mounted = true;
+  });
+
   function safeParse(val: string) {
     if (!val) return undefined;
     try {
-      // Extract YYYY-MM-DD from ISO string or full date string
       const datePart = val.split("T")[0];
       return parseDate(datePart);
     } catch (e) {
@@ -33,27 +37,21 @@
     }
   }
 
-  let dateValue = $state<DateValue | undefined>(undefined);
-  let initialized = false;
+  let dateValue = $state<DateValue | undefined>(safeParse(value));
 
-  // Sync external value → internal dateValue
+  // Sync internal dateValue → external value
   $effect(() => {
-    const parsed = safeParse(value);
-    if (parsed && (!dateValue || dateValue.toString() !== parsed.toString())) {
-      dateValue = parsed;
-    } else if (!value && dateValue) {
-      dateValue = undefined;
-    }
-    // Mark as initialized after first sync
-    initialized = true;
-  });
-
-  // Sync internal dateValue → external value (only after initialization)
-  $effect(() => {
-    if (!initialized) return;
     const newVal = dateValue ? dateValue.toString() : "";
     if (newVal !== value) {
       value = newVal;
+    }
+  });
+
+  // Sync external value → internal dateValue (e.g. if updated from outside)
+  $effect(() => {
+    const parsed = safeParse(value);
+    if (parsed?.toString() !== dateValue?.toString()) {
+      dateValue = parsed;
     }
   });
 
@@ -69,16 +67,21 @@
       <Button
         variant="outline"
         class={cn(
-          "w-full justify-start text-left font-normal rounded-xl border-zinc-200 dark:border-zinc-800 h-10 shadow-sm",
+          "w-full justify-start text-left font-normal rounded-xl border-zinc-200 dark:border-zinc-800 h-10 shadow-sm transition-all",
           !dateValue && "text-zinc-500",
           className,
         )}
         {...props}
       >
         <CalendarIcon class="mr-2 h-4 w-4 opacity-50" />
-        {dateValue
-          ? df.format(dateValue.toDate(getLocalTimeZone()))
-          : placeholder}
+        {#if mounted && dateValue}
+          {df.format(dateValue.toDate(getLocalTimeZone()))}
+        {:else if dateValue}
+          <!-- Avoid hydration mismatch by showing placeholder or a stable format initially -->
+          <span class="opacity-0">...</span>
+        {:else}
+          {placeholder}
+        {/if}
       </Button>
     {/snippet}
   </Popover.Trigger>
