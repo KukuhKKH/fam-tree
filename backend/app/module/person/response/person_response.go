@@ -74,7 +74,6 @@ func FromPersonSchema(p *schema.Person) PersonResponse {
 		Nickname:   p.Nickname,
 		Gender:     p.Gender,
 		BirthPlace: p.BirthPlace,
-		IsAlive:    p.IsAlive,
 		DeathPlace: p.DeathPlace,
 		PhotoURL:   p.PhotoURL,
 		Bio:        p.Bio,
@@ -82,6 +81,13 @@ func FromPersonSchema(p *schema.Person) PersonResponse {
 		CreatedAt:  p.CreatedAt,
 		UpdatedAt:  p.UpdatedAt,
 	}
+
+	if p.IsAlive != nil {
+		resp.IsAlive = *p.IsAlive
+	} else {
+		resp.IsAlive = true
+	}
+
 	if p.BirthDate.Valid {
 		resp.BirthDate = &p.BirthDate.Time
 	}

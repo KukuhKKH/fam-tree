@@ -102,11 +102,6 @@ func (s *personService) CreatePerson(familySlug string, userID uint64, req reque
 		return response.PersonResponse{}, errors.New("insufficient permission to add person")
 	}
 
-	isAlive := true
-	if req.IsAlive != nil {
-		isAlive = *req.IsAlive
-	}
-
 	person := &schema.Person{
 		FamilyID:   family.ID,
 		FullName:   req.FullName,
@@ -114,7 +109,7 @@ func (s *personService) CreatePerson(familySlug string, userID uint64, req reque
 		Gender:     req.Gender,
 		BirthDate:  parseDate(req.BirthDate),
 		BirthPlace: req.BirthPlace,
-		IsAlive:    isAlive,
+		IsAlive:    req.IsAlive,
 		DeathDate:  parseDate(req.DeathDate),
 		DeathPlace: req.DeathPlace,
 		PhotoURL:   req.PhotoURL,
@@ -198,7 +193,7 @@ func (s *personService) UpdatePerson(familySlug string, userID uint64, personID 
 	}
 
 	if req.IsAlive != nil {
-		person.IsAlive = *req.IsAlive
+		person.IsAlive = req.IsAlive
 	}
 
 	if req.DeathDate != "" {
@@ -395,11 +390,16 @@ func (s *personService) buildTree(family *schema.Family) (response.TreeResponse,
 			Nickname:   p.Nickname,
 			Gender:     p.Gender,
 			BirthPlace: p.BirthPlace,
-			IsAlive:    p.IsAlive,
 			DeathPlace: p.DeathPlace,
 			PhotoURL:   p.PhotoURL,
 			Bio:        p.Bio,
 			UserID:     p.UserID,
+		}
+
+		if p.IsAlive != nil {
+			node.IsAlive = *p.IsAlive
+		} else {
+			node.IsAlive = true
 		}
 
 		if p.BirthDate.Valid {
